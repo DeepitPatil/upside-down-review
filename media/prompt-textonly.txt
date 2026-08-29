@@ -1,0 +1,63 @@
+[Image1] is the house above ground. [Image2] is the same house below ground in
+the Upside Down. [Image3] is the plot above ground. [Image4] is the same plot
+below ground. Take all appearance from these four images. Keep the two worlds
+visually separate and never blend their looks.
+
+SCENE. Hawkins, Indiana, summer 1983. A large two-storey suburban family home
+alone on a quiet residential street, and the identical house mirrored directly
+beneath it underground, in the Upside Down. One unbroken handheld-smooth
+Steadicam take, no cuts, that travels from one world into the other.
+
+ABOVE GROUND, per [Image1] and [Image3]. Brick ground floor, cream clapboard
+upper storey, red-brown shingled cross-gable roof with two dormers, deep covered
+front porch on white posts, projecting bay window, dark green shutters and a
+dark green front door, attached garage on the right with a concrete driveway.
+Wide sun-bleached lawn, stone slab path, kerb and cracked asphalt street,
+mailbox on a weathered post, utility pole and cables, dense pines behind. Clear
+hot afternoon, hard warm sunlight from the front left, deep blue sky, long soft
+shadows.
+
+BELOW GROUND, per [Image2] and [Image4]. The same house on the same plot,
+mirrored, everything drained to ashen grey and cold blue-black. House wrapped in
+slick rope-like tendrils and creeping vine, windows dead but for a dull
+ember-red seep. Ground swallowed under wet organic membrane. Pines reduced to
+black leafless skeletons. Spores suspended at every depth, drifting like snow.
+Churning black and blood-red storm sky lit from within by silent forked
+lightning. No sun, no wind, nothing alive.
+
+CAMERA, second by second. The camera is always aimed at the centre of the house
+and holds a constant distance of roughly 23 metres once the pull-back ends.
+
+0-1s   Eye level, 2 m off the ground, 11 m from the porch, looking slightly up
+       at the front door. Begin pulling straight back. Level horizon.
+1-2s   Continue pulling back to 20 m. Height stays at 2 m. The full house and
+       front lawn come into frame. Horizon still level.
+2-3s   Settle at 23 m and hold for a beat. The whole property is in frame, the
+       ground line across the middle of the shot.
+3-4s   Begin to rise and roll together. Climb to 12 m, tilting down to about 30
+       degrees above the house. The frame rolls 30 degrees clockwise.
+4-5s   Continue up and over. Climb to 24 m, almost directly above the roof
+       looking straight down. The frame has rolled 90 degrees - the horizon now
+       runs vertically down the picture.
+5-6s   Pass over the ridge and start down the far side, behind the house.
+       Descend hard through 15 m, then through zero, punching through the
+       ground plane itself at about 5.8s. The frame is rolled past 90 degrees
+       and still turning.
+6-7s   Now below ground in the Upside Down. Keep descending to the lowest point,
+       24 m beneath the house, looking up at its underside. The mirrored house
+       fills the frame from below.
+7-8s   Begin rising back toward the front of the house, still underground,
+       climbing from 24 m below to 9 m below. The frame rolls through 130 to
+       155 degrees - the world is nearly inverted.
+8-9s   Rise to 3 m below ground and level out facing the front of the
+       underground house. The roll completes at 175 degrees: the shot is now
+       fully upside down relative to where it began, which makes the
+       underground house read upright and perfectly framed.
+9-10s  Hold. Camera at rest 2 m below the ground plane, 23 m from the house,
+       looking straight at the front of the Upside Down house. Final frame is
+       the exact mirror of the opening composition.
+
+STYLE. Photoreal, anamorphic, shallow depth of field, 35 mm film grain, Netflix
+Stranger Things cinematography. Continuous single take, smooth constant motion,
+no cuts, no speed ramps, no camera shake. No people, no animals, no vehicles,
+no text.

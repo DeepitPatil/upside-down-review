@@ -1,0 +1,51 @@
+Image1 is the house above ground. Image2 is the same house below ground in the
+Upside Down. Image3 is the plot above ground. Image4 is the same plot below
+ground. Take ALL appearance from these four images.
+
+SCENE. Hawkins, Indiana, 1983. A large two-storey suburban family home, and the
+identical house mirrored directly beneath it underground in the Upside Down. One
+unbroken 10 second take travelling from one world into the other. Above: hard
+afternoon sun, deep blue sky, green lawn, pines. Below: ashen grey, wet tendrils
+and vine, dull red window seep, drifting spores, churning black and blood-red
+storm sky, silent lightning, nothing alive.
+
+CAMERA. The exact move is defined by this Three.js code. Execute it literally.
+The house sits at the origin. Units are metres. t runs 0 to 10 seconds.
+
+  const R = 23.1;                    // orbit radius, constant
+  const ease = u => -(Math.cos(Math.PI * u) - 1) / 2;
+
+  function camera(t) {
+    if (t < 2.6) {                   // BEAT 1 - pull back, ground level
+      const u = ease(t / 2.6);
+      return { pos: [0, 2.1, 11 + 12 * u],   // height locked at 2.1 m
+               lookAt: [0, 1.6, 0],
+               roll: 0 };            // no rotation at all in beat 1
+    }
+    const u = Math.min((t - 3.0) / 5.8, 1);  // BEATS 2 to 5
+    const e = ease(u);
+    const phi = 0.09 + (2 * Math.PI - 0.18) * e;   // ONE FULL REVOLUTION
+    return { pos: [0, R * Math.sin(phi), R * Math.cos(phi)],
+             lookAt: [0, 0, 0],
+             roll: Math.PI * e };    // HALF TURN, driven by the SAME e as phi
+  }
+
+READ THE CODE THIS WAY. phi sweeps a full circle in the vertical plane, so the
+camera climbs over the roof, drops behind the house, passes down THROUGH the
+ground plane at about t=5.8, continues beneath the mirrored house, and rises
+back to the front. roll and phi are both driven by the same variable e, which is
+the whole point: the picture is rotating at every instant the camera is moving,
+never as a separate move afterwards. By t=5.8, when it breaks through the
+ground, roll is already about 90 degrees. At t=10 roll reaches 180 degrees, so
+the camera is fully inverted and the underground house reads upright and level -
+the mirror of the opening frame. Hold there.
+
+Positive y is above ground, negative y is below ground, so the sign of pos[1]
+tells you which world the camera is in at any moment.
+
+DO NOT start in the air or as a drone flyover - beat 1 is a ground level shot at
+2.1 m. DO NOT hold the camera level through the descent and rotate at the end.
+
+STYLE. Photoreal, anamorphic, 35mm grain, Stranger Things cinematography. Single
+continuous take, smooth constant motion, no cuts, no shake. No people, animals,
+vehicles or text.

@@ -1,0 +1,57 @@
+REFERENCE ROLES. Image1 is the house above ground. Image2 is the same house
+below ground in the Upside Down. Image3 is the plot above ground. Image4 is the
+same plot below ground. Take ALL appearance from Image1-Image4.
+
+Image5-Image9 are camera blocking diagrams from a rough 3D previz. Use them ONLY
+to read camera height, angle, framing and how far the picture is rotated at each
+beat. Completely ignore their colours, materials, simple shapes and toy-like
+look. Never render anything that looks like Image5-Image9.
+
+SCENE. Hawkins, Indiana, 1983. A large two-storey suburban family home, and the
+identical house mirrored directly beneath it underground in the Upside Down. One
+unbroken take travelling from one world into the other. Above: hard afternoon
+sun, deep blue sky, green lawn. Below: ashen grey, wet tendrils and vine, dull
+red window seep, spores drifting, churning black and blood-red storm sky, silent
+lightning, nothing alive.
+
+CAMERA. One continuous Steadicam take, no cuts, always aimed at the house.
+
+THE RULE: once the camera begins to climb, its travel and its rotation happen
+together as one inseparable motion. The picture turns steadily the entire time
+the camera is moving. The rotation never pauses and never happens as a separate
+move after arriving. One smooth half-turn spread evenly across the journey.
+
+BEAT 1 - OPEN LOW AND PULL BACK. Start exactly as framed in Image5: eye level,
+two metres off the ground, close enough that the front door and porch fill the
+frame. This is a ground-level shot, NOT an aerial one. Pull straight back at
+that same low height until the framing matches Image6: whole house, lawn and
+driveway in frame, ground line across the middle, horizon dead level. No
+rotation at all through this beat. This is the longest beat of the shot.
+
+BEAT 2 - RISE AND TURN AS ONE. Without stopping, begin climbing and turning in
+the same instant, arcing up over the house until the framing matches Image7:
+high above the roof looking down, picture rotated a quarter turn, horizon
+running vertically.
+
+BEAT 3 - THROUGH THE GROUND. Still turning at the same steady rate, carry over
+the ridge, drop fast behind the house and pass straight down through the ground
+plane, reaching the framing of Image8 at the moment of breaking through. Note it
+is already well past a quarter turn there and still turning. It must not be
+level.
+
+BEAT 4 - BENEATH. Below ground now, keep descending until far under the mirrored
+house looking up at its underside, then swing back up toward its front. The
+rotation crosses past halfway during this beat.
+
+BEAT 5 - ARRIVE ALREADY RIGHT WAY UP. Rise to face the front of the underground
+house and complete the half turn at the exact moment of arrival, matching
+Image9: camera fully inverted, so the underground house reads upright and level,
+the mirror of the opening. Settle and hold.
+
+DO NOT start the shot in the air or as a drone flyover. DO NOT hold level
+through the descent then rotate at the end. DO NOT arrive with the house upside
+down and spin it upright.
+
+STYLE. Photoreal, anamorphic, 35mm grain, Stranger Things cinematography. Single
+take, smooth constant motion, no cuts, no shake. No people, animals, vehicles or
+text.

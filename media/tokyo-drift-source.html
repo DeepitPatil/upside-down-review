@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tokyo Drift — primitives previz</title>
+<style>
+  html,body{margin:0;height:100%;background:#05060a;overflow:hidden}
+  canvas{display:block}
+  #slate{position:fixed;left:14px;bottom:12px;font:11px/1.4 ui-monospace,Menlo,monospace;
+    letter-spacing:.09em;color:rgba(255,255,255,.5);text-shadow:0 1px 3px #000;pointer-events:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.180.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="slate"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ------------------------------------------------------------------ *
+ * Tokyo-drift street race, built from primitives as a motion reference.
+ *
+ * Everything is a pure function of time t, including smoke and sparks,
+ * so any frame can be seeked and re-rendered identically. Nothing
+ * integrates frame-to-frame — that is what makes deterministic capture
+ * possible, and it is the main constraint on how the effects are built.
+ *
+ * Colour coding, for the prompt that consumes this:
+ *   red box      = car 1        blue box   = car 2
+ *   black cylinders = wheels    yellow figure = flag girl
+ *   magenta panel = her flag    dark plane = road
+ * ------------------------------------------------------------------ */
+const P = new URLSearchParams(location.search);
+const BARE = P.get('bare') === '1';
+const CAPTURE = P.get('capture') === '1';
+
+const V3 = THREE.Vector3;
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const eOut = (x) => 1 - Math.pow(1 - x, 3);
+const eInOut = (x) => -(Math.cos(Math.PI * x) - 1) / 2;
+// seeded PRNG so the city, the smoke and the sparks are identical every run
+const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0;
+  let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* ------------------------------ track ----------------------------- */
+// straight, then a 90° left sweeper (the drift corner), then a run-out
+const S1 = 400, ARC_R = 110, ARC_LEN = Math.PI / 2 * ARC_R, S2 = 340;
+const TOTAL_S = S1 + ARC_LEN + S2;
+const ROAD_W = 26, LANE = 4.4;
+
+function track(s) {
+  if (s < S1) return { p: new V3(0, 0, -s), dir: new V3(0, 0, -1) };
+  if (s < S1 + ARC_LEN) {
+    const a = (s - S1) / ARC_R;                       // 0 .. PI/2
+    return {
+      p: new V3(-ARC_R + ARC_R * Math.cos(a), 0, -S1 - ARC_R * Math.sin(a)),
+      dir: new V3(-Math.sin(a), 0, -Math.cos(a)),
+    };
+  }
+  const d = s - S1 - ARC_LEN;
+  return { p: new V3(-ARC_R - d, 0, -S1 - ARC_R), dir: new V3(-1, 0, 0) };
+}
+const rightOf = (dir) => new V3(-dir.z, 0, dir.x);
+
+/* --------------------------- car dynamics ------------------------- */
+const T_GREEN = 7.0;                 // flag drops
+const V_MAX = 56, TAU = 1.55;
+function distanceAt(t) {             // analytic integral of an exponential ramp
+  const dt = t - T_GREEN;
+  if (dt <= 0) return 0;
+  return V_MAX * (dt + TAU * (Math.exp(-dt / TAU) - 1));
+}
+function speedAt(t) {
+  const dt = t - T_GREEN;
+  return dt <= 0 ? 0 : V_MAX * (1 - Math.exp(-dt / TAU));
+}
+// the two cars trade the lead so the race reads as a contest
+function carDistance(t, car) {
+  const base = distanceAt(t);
+  if (base <= 0) return car === 0 ? 0 : 0;
+  const duel = Math.sin((t - T_GREEN) * 0.85) * 7.5 + Math.sin((t - T_GREEN) * 2.1) * 2.0;
+  return base + (car === 0 ? duel : -duel);
+}
+const inCorner = (s) => s > S1 - 26 && s < S1 + ARC_LEN + 30;
+
+function carState(t, car) {
+  const s = Math.max(0, carDistance(t, car));
+  const { p, dir } = track(s);
+  const right = rightOf(dir);
+  const lat = car === 0 ? -LANE : LANE;
+  // cars swing wide through the corner, then tuck back in
+  const wide = inCorner(s) ? Math.sin(clamp((s - (S1 - 26)) / (ARC_LEN + 56), 0, 1) * Math.PI) * 3.4 : 0;
+  const pos = p.clone().addScaledVector(right, lat + wide);
+  pos.y = 0.62;
+  let yaw = Math.atan2(-dir.x, -dir.z);
+  // oversteer: the body points further into the turn than it travels
+  const drift = inCorner(s) ? Math.sin(clamp((s - (S1 - 26)) / (ARC_LEN + 56), 0, 1) * Math.PI) : 0;
+  yaw += drift * 0.62;
+  // squat under launch, roll into the corner
+  const launch = smooth(T_GREEN, T_GREEN + 0.9, t) * (1 - smooth(T_GREEN + 0.9, T_GREEN + 2.4, t));
+  return { s, pos, yaw, dir, right, drift, launch, speed: speedAt(t) };
+}
+
+/* ----------------------------- renderer --------------------------- */
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: CAPTURE });
+renderer.setPixelRatio(CAPTURE ? 1 : Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0b0f1a, 0.0016);
+scene.background = new THREE.Color(0x070910);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.05, 3000);
+
+/* ------------------------------ world ----------------------------- */
+const std = (o) => new THREE.MeshStandardMaterial({ flatShading: true, ...o });
+const MAT = {
+  road:  std({ color: 0x14161d, roughness: 0.82, metalness: 0.15 }),
+  kerb:  std({ color: 0x3a3f4a, roughness: 0.9 }),
+  paint: std({ color: 0xd9dee8, roughness: 0.6, emissive: 0x20242c }),
+  car1:  std({ color: 0xd6202a, roughness: 0.32, metalness: 0.5 }),
+  car2:  std({ color: 0x1d5fd8, roughness: 0.32, metalness: 0.5 }),
+  glass: std({ color: 0x0a0e16, roughness: 0.12, metalness: 0.85 }),
+  tyre:  std({ color: 0x0d0e11, roughness: 0.95 }),
+  rim:   std({ color: 0xb9c2cf, roughness: 0.28, metalness: 0.9 }),
+  girl:  std({ color: 0xf2c53d, roughness: 0.75 }),
+  skin:  std({ color: 0xe8b98f, roughness: 0.8 }),
+  flag:  std({ color: 0xff2d95, roughness: 0.6, emissive: 0x5c0030 }),
+  bldg:  std({ color: 0x0f1219, roughness: 0.95 }),
+};
+const neon = (c) => new THREE.MeshBasicMaterial({ color: c });
+
+// road
+const road = new THREE.Group();
+{
+  const strip = (from, to, step) => {
+    for (let s = from; s < to; s += step) {
+      const a = track(s), b = track(Math.min(s + step, to));
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(ROAD_W, 0.3, a.p.distanceTo(b.p) + 0.6), MAT.road);
+      seg.position.copy(a.p.clone().lerp(b.p, 0.5)); seg.position.y = -0.15;
+      seg.rotation.y = Math.atan2(-a.dir.x, -a.dir.z);
+      seg.receiveShadow = true; road.add(seg);
+      for (const side of [-1, 1]) {                       // kerbs
+        const k = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, a.p.distanceTo(b.p) + 0.6), MAT.kerb);
+        k.position.copy(seg.position).addScaledVector(rightOf(a.dir), side * (ROAD_W / 2 + 0.7));
+        k.position.y = 0.1; k.rotation.y = seg.rotation.y; road.add(k);
+      }
+    }
+  };
+  strip(-40, TOTAL_S + 40, 12);
+  for (let s = -30; s < TOTAL_S + 20; s += 16) {          // centre dashes
+    const a = track(s);
+    const d = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 6), MAT.paint);
+    d.position.copy(a.p); d.position.y = 0.02;
+    d.rotation.y = Math.atan2(-a.dir.x, -a.dir.z); road.add(d);
+  }
+  const line = new THREE.Mesh(new THREE.BoxGeometry(ROAD_W, 0.06, 1.1), MAT.paint);  // start line
+  line.position.set(0, 0.03, 0); road.add(line);
+}
+scene.add(road);
+
+// city: neon boxes down both sides, plus a few over the corner
+{
+  const rnd = mulberry(20260829);
+  const city = new THREE.Group();
+  const NEONS = [0x18e0ff, 0xff2d95, 0xffb02e, 0x7cff4f, 0xff3b30];
+  const place = (px, pz, ry) => {
+    const w = 10 + rnd() * 20, h = 26 + rnd() * 86, d = 10 + rnd() * 18;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), MAT.bldg);
+    b.position.set(px, h / 2, pz); b.rotation.y = ry; b.castShadow = true; city.add(b);
+    const n = 1 + Math.floor(rnd() * 4);                   // neon signs on the face
+    for (let i = 0; i < n; i++) {
+      const tall = rnd() > 0.45;
+      const sw = tall ? 0.7 + rnd() : 2 + rnd() * 5, sh = tall ? 5 + rnd() * 16 : 0.7 + rnd();
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, 0.4), neon(NEONS[(rnd() * 5) | 0]));
+      sign.position.set((rnd() - 0.5) * w * 0.7, 5 + rnd() * (h - 12), d / 2 + 0.3);
+      sign.rotation.y = 0; b.add(sign);
+    }
+  };
+  for (let s = -60; s < S1 + 60; s += 26)
+    for (const side of [-1, 1]) place(side * (ROAD_W / 2 + 16 + rnd() * 10), -s, 0);
+  for (let a = 0; a < Math.PI / 2; a += 0.16) {            // outside of the corner
+    const s = S1 + a * ARC_R, tp = track(s);
+    place(tp.p.x - rightOf(tp.dir).x * 30, tp.p.z - rightOf(tp.dir).z * 30, -a);
+  }
+  for (let d = 0; d < S2; d += 26)
+    for (const side of [-1, 1]) place(-ARC_R - d, -S1 - ARC_R + side * (ROAD_W / 2 + 20), Math.PI / 2);
+  scene.add(city);
+}
+
+/* ------------------------------- cars ----------------------------- */
+function buildCar(bodyMat) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.72, 5.2), bodyMat);
+  body.position.y = 0.68; body.castShadow = true; g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.62, 2.5), bodyMat);
+  cabin.position.set(0, 1.32, -0.15); cabin.castShadow = true; g.add(cabin);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.99, 0.42, 1.5), MAT.glass);
+  glass.position.set(0, 1.36, 0.35); g.add(glass);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.12, 0.5), bodyMat);
+  wing.position.set(0, 1.32, -2.5); g.add(wing);
+  for (const sx of [-1, 1]) {
+    const stay = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.12), bodyMat);
+    stay.position.set(sx * 0.8, 1.12, -2.5); g.add(stay);
+  }
+  const wheels = [];
+  const tyreGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.5, 16);
+  const rimGeo = new THREE.BoxGeometry(0.52, 0.16, 0.16);
+  for (const [sx, sz] of [[-1, 1.7], [1, 1.7], [-1, -1.7], [1, -1.7]]) {
+    const w = new THREE.Group();
+    const tyre = new THREE.Mesh(tyreGeo, MAT.tyre);
+    tyre.rotation.z = Math.PI / 2; tyre.castShadow = true; w.add(tyre);
+    for (let i = 0; i < 3; i++) {                          // spokes read the spin
+      const r = new THREE.Mesh(rimGeo, MAT.rim); r.rotation.x = i * Math.PI / 3; w.add(r);
+    }
+    w.position.set(sx * 1.12, 0.62, sz); g.add(w); wheels.push(w);
+  }
+  // headlights and tail lights carry the shot when the car is a silhouette
+  for (const sx of [-1, 1]) {
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.12), neon(0xfff3d0));
+    hl.position.set(sx * 0.72, 0.78, 2.62); g.add(hl);
+    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.12), neon(0xff2d1a));
+    tl.position.set(sx * 0.78, 0.86, -2.62); g.add(tl);
+  }
+  const beam = new THREE.SpotLight(0xfff0d8, 380, 130, 0.34, 0.55, 1.6);
+  beam.position.set(0, 0.8, 2.6); beam.target.position.set(0, 0.2, 26);
+  g.add(beam, beam.target);
+  return { g, wheels };
+}
+const CARS = [buildCar(MAT.car1), buildCar(MAT.car2)];
+CARS.forEach((c) => scene.add(c.g));
+
+/* ---------------------------- flag girl --------------------------- */
+const GIRL = (() => {
+  const g = new THREE.Group();
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.9, 0.34), MAT.girl);
+  torso.position.y = 1.28; torso.castShadow = true; g.add(torso);
+  const hips = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.36, 0.34), MAT.girl);
+  hips.position.y = 0.78; g.add(hips);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 10), MAT.skin);
+  head.position.y = 1.92; head.castShadow = true; g.add(head);
+  const hair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.46), std({ color: 0x1b1418, roughness: 1 }));
+  hair.position.set(0, 1.98, -0.06); g.add(hair);
+  const legs = [], arms = [];
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Group();
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.78, 0.24), std({ color: 0x22262e, roughness: 0.9 }));
+    l.position.y = -0.39; leg.add(l); leg.position.set(sx * 0.17, 0.62, 0);
+    g.add(leg); legs.push(leg);
+    const arm = new THREE.Group();
+    const a = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.74, 0.19), MAT.skin);
+    a.position.y = -0.37; arm.add(a); arm.position.set(sx * 0.42, 1.66, 0);
+    g.add(arm); arms.push(arm);
+  }
+  const flag = new THREE.Group();                          // pole + panel, on the right arm
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.5, 8), MAT.rim);
+  pole.position.y = -0.55; flag.add(pole);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.62, 0.03), MAT.flag);
+  panel.position.set(0.5, -1.05, 0); flag.add(panel);
+  arms[1].add(flag); flag.position.y = -0.7;
+  scene.add(g);
+  return { g, legs, arms, flag };
+})();
+
+function poseGirl(t) {
+  const walkIn = smooth(2.6, 5.4, t);
+  const x = lerp(15, 0, eOut(walkIn));
+  GIRL.g.position.set(x, 0, -17);
+  GIRL.g.rotation.y = lerp(-Math.PI / 2, Math.PI, smooth(4.9, 5.9, t));   // turns to face the cars
+  const stride = walkIn < 1 ? Math.sin(t * 9.5) * 0.75 : Math.sin(t * 1.6) * 0.04;
+  GIRL.legs[0].rotation.x = stride; GIRL.legs[1].rotation.x = -stride;
+  // arm swings while walking, then the flag goes up, waves, and slashes down on green
+  const raise = smooth(5.7, 6.4, t), wave = smooth(6.4, 6.55, t) * (1 - smooth(6.9, 7.0, t));
+  const drop = smooth(T_GREEN - 0.12, T_GREEN + 0.06, t);
+  GIRL.arms[0].rotation.x = walkIn < 1 ? -stride * 0.7 : 0.12;
+  GIRL.arms[1].rotation.x = lerp(walkIn < 1 ? stride * 0.7 : 0.1, -2.55, raise)
+                          + Math.sin(t * 22) * 0.30 * wave
+                          + drop * 3.0;
+  GIRL.arms[1].rotation.z = -drop * 0.5;
+  GIRL.flag.rotation.z = Math.sin(t * 17) * 0.35 * wave - drop * 0.7;
+}
+
+/* ------------------- deterministic smoke and sparks --------------- */
+// Every particle knows its own spawn time; position is evaluated from
+// that, never accumulated, so seeking to any frame gives the same image.
+function makeParticles({ count, seed, tFrom, tTo, life, spread, rise, drag, size, colour, blending, opacity }) {
+  const rnd = mulberry(seed);
+  const spec = [];
+  for (let i = 0; i < count; i++) {
+    spec.push({
+      ts: tFrom + rnd() * (tTo - tFrom),
+      car: i % 2, wheel: 2 + ((i >> 1) % 2),
+      v: new V3((rnd() - 0.5) * spread, rise * (0.4 + rnd()), (rnd() - 0.5) * spread),
+      life: life * (0.65 + rnd() * 0.7), s0: size * (0.5 + rnd()),
+    });
+  }
+  const pos = new Float32Array(count * 3), aSize = new Float32Array(count), aAlpha = new Float32Array(count);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
+  geo.setAttribute('aAlpha', new THREE.BufferAttribute(aAlpha, 1));
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending,
+    uniforms: { uColour: { value: new THREE.Color(colour) }, uOpacity: { value: opacity } },
+    vertexShader: `attribute float aSize; attribute float aAlpha; varying float vA;
+      void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.0);
+        gl_PointSize=aSize*(300.0/max(-mv.z,1.0)); gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform vec3 uColour; uniform float uOpacity; varying float vA;
+      void main(){ vec2 d=gl_PointCoord-0.5; float r=length(d);
+        if(r>0.5) discard; float a=smoothstep(0.5,0.0,r)*vA*uOpacity;
+        gl_FragColor=vec4(uColour,a); }`,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return { spec, geo, pos, aSize, aAlpha, drag };
+}
+
+const SMOKE = makeParticles({ count: 900, seed: 7771, tFrom: T_GREEN - 0.25, tTo: 19.8,
+  life: 2.2, spread: 5.5, rise: 3.4, drag: 0.55, size: 46, colour: 0xbfc6d2,
+  blending: THREE.NormalBlending, opacity: 0.5 });
+const SPARK = makeParticles({ count: 230, seed: 4242, tFrom: 15.9, tTo: 19.4,
+  life: 0.5, spread: 16, rise: 6.0, drag: 0.95, size: 4.5, colour: 0xffb257,
+  blending: THREE.AdditiveBlending, opacity: 0.85 });
+
+const _wp = new V3();
+function wheelWorld(t, car, wheel) {
+  const st = carState(t, car);
+  const off = new V3(wheel === 2 ? -1.12 : 1.12, 0, -1.7);
+  off.applyAxisAngle(new V3(0, 1, 0), st.yaw);
+  return _wp.copy(st.pos).add(off).setY(0.25);
+}
+function updateParticles(sys, t, gate) {
+  const { spec, pos, aSize, aAlpha, drag } = sys;
+  for (let i = 0; i < spec.length; i++) {
+    const s = spec[i], age = t - s.ts;
+    const on = gate(s.ts);
+    if (age < 0 || age > s.life || !on) { aAlpha[i] = 0; pos[i * 3 + 1] = -9999; continue; }
+    const k = age / s.life;
+    const o = wheelWorld(s.ts, s.car, s.wheel);
+    const decay = (1 - Math.exp(-age * drag * 4)) / (drag * 4);
+    pos[i * 3]     = o.x + s.v.x * decay;
+    pos[i * 3 + 1] = o.y + s.v.y * decay;
+    pos[i * 3 + 2] = o.z + s.v.z * decay;
+    aSize[i] = s.s0 * (0.35 + k * 1.9);
+    aAlpha[i] = Math.sin(Math.min(k, 1) * Math.PI) * (1 - k * 0.35);
+  }
+  sys.geo.attributes.position.needsUpdate = true;
+  sys.geo.attributes.aSize.needsUpdate = true;
+  sys.geo.attributes.aAlpha.needsUpdate = true;
+}
+// smoke only where it belongs: the launch burn-out and the corner
+const smokeGate = (ts) => (ts < T_GREEN + 1.9) || (ts > 15.8);
+
+/* ------------------------------ lights ---------------------------- */
+scene.add(new THREE.AmbientLight(0x38445e, 2.4));
+const key = new THREE.DirectionalLight(0x8fa8ff, 0.85);
+key.position.set(-60, 90, 40); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 1, far: 260 });
+key.shadow.bias = -0.0012; key.shadow.normalBias = 0.04;
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0x33456e, 0x12161f, 1.35));
+// sodium street lamps down both sides — these give the tarmac its falloff
+{
+  const head = new THREE.MeshBasicMaterial({ color: 0xffd9a0 });
+  for (let s = 10; s < TOTAL_S; s += 46) {
+    const tp = track(s), r = rightOf(tp.dir);
+    for (const side of [-1, 1]) {
+      const base = tp.p.clone().addScaledVector(r, side * (ROAD_W / 2 + 2.2));
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 9, 6), MAT.kerb);
+      pole.position.copy(base).setY(4.5); scene.add(pole);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.7), head);
+      lamp.position.copy(base).addScaledVector(r, -side * 1.5).setY(8.9);
+      lamp.rotation.y = Math.atan2(-tp.dir.x, -tp.dir.z); scene.add(lamp);
+    }
+  }
+}
+const streetGlow = new THREE.PointLight(0xff2d95, 260, 90, 2);
+streetGlow.position.set(10, 9, -18); scene.add(streetGlow);
+const carFill = new THREE.PointLight(0xbcd0ff, 120, 26, 2);
+scene.add(carFill);
+const tyreKey = new THREE.SpotLight(0xffd9b0, 0, 14, 0.8, 0.6, 1.5);
+scene.add(tyreKey, tyreKey.target);
+
+/* --------------------------- post-process ------------------------- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.42, 0.7, 0.8);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ------------------------------ shots ----------------------------- */
+const shake = (t, amp) => new V3(
+  Math.sin(t * 41.3) * amp, Math.sin(t * 33.7 + 1.4) * amp, Math.sin(t * 27.1 + 2.9) * amp);
+
+function look(pos, at, up) { camera.up.copy(up || new V3(0, 1, 0)); camera.position.copy(pos); camera.lookAt(at); }
+
+const SHOTS = [
+  { name: 'GRID', end: 3.2, fov: 56, cam(u, t) {
+      // between the two cars on the start line, looking down the strip.
+      // wide lens + setback so both cars flank frame and the road runs out ahead
+      look(new V3(0, lerp(1.15, 0.85, eInOut(u)), lerp(7.4, 3.2, eInOut(u))), new V3(0, 1.0, -90));
+    } },
+  { name: 'SHE WALKS IN', end: 6.0, fov: 40, cam(u, t) {
+      const gp = GIRL.g.position;
+      // hold her at a readable size and let her walk toward the lens
+      look(new V3(lerp(7.4, 4.6, u), 1.45, lerp(-11.2, -12.6, u)),
+           new V3(lerp(gp.x * 0.5, 0, u), 1.2, gp.z + 0.5));
+    } },
+  { name: 'FLAG UP', end: 7.0, fov: 30, cam(u, t) {
+      // low hero angle, pushing in as the flag goes up
+      look(new V3(lerp(2.9, 2.1, u), lerp(0.42, 0.6, u), lerp(-12.4, -13.6, u)), new V3(0, 1.75, -17));
+    } },
+  { name: 'TYRES', end: 8.3, fov: 38, cam(u, t) {
+      // hard on the rear wheel: close enough that the tyre fills frame
+      const w = wheelWorld(t, 0, 2).clone().setY(0.62);
+      const eye = w.clone().add(new V3(-1.75, 0.16, lerp(0.1, 1.5, u)));
+      look(eye.add(shake(t, 0.06 * smooth(T_GREEN, T_GREEN + 0.35, t))), w);
+    } },
+  { name: 'LAUNCH PAST', end: 10.0, fov: 32, cam(u, t) {
+      const c = carState(t, 0);
+      look(new V3(8.6, 0.45, -47).add(shake(t, 0.06 * (1 - u))), new V3(c.pos.x * 0.5, 0.85, c.pos.z));
+    } },
+  { name: 'AERIAL', end: 13.0, fov: 40, cam(u, t) {
+      const a = carState(t, 0).pos, b = carState(t, 1).pos;
+      const mid = a.clone().lerp(b, 0.5);
+      look(mid.clone().add(new V3(lerp(26, -8, u), lerp(52, 34, u), lerp(30, 16, u))), mid);
+    } },
+  { name: 'SIDE TRACK', end: 16.0, fov: 34, cam(u, t) {
+      const c = carState(t, 0);
+      const side = c.right.clone().multiplyScalar(-15).setY(1.45);
+      look(c.pos.clone().add(side).add(shake(t, 0.02)), carState(t, 1).pos.clone().setY(0.9));
+    } },
+  { name: 'DRIFT', end: 19.5, fov: 42, cam(u, t) {
+      // outside the corner, low, sweeping with the slide
+      const c = carState(t, 0);
+      const out = c.right.clone().multiplyScalar(19).setY(lerp(1.1, 4.2, u));
+      look(c.pos.clone().add(out).add(shake(t, 0.09 * c.drift)), c.pos.clone().setY(0.8));
+    } },
+  { name: 'LOW CHASE', end: 22.0, fov: 36, cam(u, t) {
+      const c = carState(t, 0);
+      const back = c.dir.clone().multiplyScalar(-11).setY(lerp(0.55, 1.5, u));
+      look(c.pos.clone().add(back).add(shake(t, 0.05)), carState(t + 0.35, 1).pos.clone().setY(1.0));
+    } },
+  { name: 'GONE', end: 25.0, fov: 30, cam(u, t) {
+      const c = carState(t, 0);
+      look(c.pos.clone().add(c.dir.clone().multiplyScalar(-26)).setY(lerp(2.0, 15, eInOut(u))),
+           c.pos.clone().setY(1.0));
+    } },
+];
+let acc = 0; for (const s of SHOTS) { s.start = acc; acc = s.end; }
+const TOTAL = SHOTS[SHOTS.length - 1].end;
+
+/* ------------------------------ draw ------------------------------ */
+const slate = document.getElementById('slate');
+function draw(t) {
+  poseGirl(t);
+  for (let i = 0; i < 2; i++) {
+    const st = carState(t, i), c = CARS[i];
+    c.g.position.copy(st.pos);
+    c.g.rotation.set(0, st.yaw, 0);
+    c.g.rotation.z = -st.drift * 0.09;                     // body roll into the slide
+    c.g.rotation.x = st.launch * 0.055;                    // squat off the line
+    const spin = -(carDistance(t, i) / 0.62);
+    c.wheels.forEach((w, k) => { w.rotation.x = spin + (k < 2 ? 0 : 0.4); });
+  }
+  {
+    const lead = carState(t, 0);
+    carFill.position.copy(lead.pos).addScaledVector(lead.right, -4).setY(4.5);
+    // only burns during the tyre shot, so the rubber is not a black disc
+    const on = smooth(6.95, 7.1, t) * (1 - smooth(8.15, 8.3, t));
+    tyreKey.intensity = 55 * on;
+    const w = wheelWorld(t, 0, 2).clone().setY(0.62);
+    tyreKey.position.copy(w).add(new V3(-3.0, 1.9, 2.6));
+    tyreKey.target.position.copy(w);
+    tyreKey.target.updateMatrixWorld();
+  }
+  updateParticles(SMOKE, t, smokeGate);
+  updateParticles(SPARK, t, () => true);
+
+  const shot = SHOTS.find((s) => t < s.end) || SHOTS[SHOTS.length - 1];
+  const u = clamp((t - shot.start) / (shot.end - shot.start), 0, 1);
+  camera.fov = shot.fov; camera.updateProjectionMatrix();
+  shot.cam(u, t);
+  if (!BARE) slate.textContent = `${t.toFixed(2)}s  ·  ${shot.name}`;
+  composer.render();
+}
+
+const clock = new THREE.Clock();
+let t = 0, paused = false;
+function frame() {
+  requestAnimationFrame(frame);
+  if (!paused) t = (t + Math.min(clock.getDelta(), 0.05)) % TOTAL;
+  draw(t);
+}
+requestAnimationFrame(frame);
+
+addEventListener('keydown', (e) => {
+  if (e.code === 'Space') { paused = !paused; e.preventDefault(); }
+  else if (e.code === 'KeyR') t = 0;
+  else if (e.code === 'ArrowRight') t = (t + 0.25) % TOTAL;
+  else if (e.code === 'ArrowLeft') t = (t - 0.25 + TOTAL) % TOTAL;
+});
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  bloom.setSize(innerWidth, innerHeight);
+});
+if (BARE) slate.remove();
+
+window.__anim = {
+  duration: TOTAL,
+  shots: SHOTS.map((s) => ({ name: s.name, start: +s.start.toFixed(2), end: s.end })),
+  seek(x) { paused = true; t = clamp(x, 0, TOTAL); draw(t); return { t, shot: (SHOTS.find(s => t < s.end) || {}).name }; },
+  play() { paused = false; },
+};
+</script>
+</body>
+</html>

@@ -54,7 +54,9 @@ const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0;
 
 /* ------------------------------ track ----------------------------- */
 // straight, then a 90° left sweeper (the drift corner), then a run-out
-const S1 = 400, ARC_R = 110, ARC_LEN = Math.PI / 2 * ARC_R, S2 = 340;
+// Corner position is chosen so the cars arrive in it exactly during the
+// DRIFT shot. Re-time the cut and this has to move with it.
+const S1 = 245, ARC_R = 110, ARC_LEN = Math.PI / 2 * ARC_R, S2 = 340;
 const TOTAL_S = S1 + ARC_LEN + S2;
 const ROAD_W = 26, LANE = 4.4;
 
@@ -73,7 +75,8 @@ function track(s) {
 const rightOf = (dir) => new V3(-dir.z, 0, dir.x);
 
 /* --------------------------- car dynamics ------------------------- */
-const T_GREEN = 7.0;                 // flag drops
+const T_GREEN = 4.4;                 // flag drops
+const T_DRIFT0 = 10.2, T_DRIFT1 = 12.6;   // the corner, matching the DRIFT shot
 const V_MAX = 56, TAU = 1.55;
 function distanceAt(t) {             // analytic integral of an exponential ramp
   const dt = t - T_GREEN;
@@ -91,7 +94,7 @@ function carDistance(t, car) {
   const duel = Math.sin((t - T_GREEN) * 0.85) * 7.5 + Math.sin((t - T_GREEN) * 2.1) * 2.0;
   return base + (car === 0 ? duel : -duel);
 }
-const inCorner = (s) => s > S1 - 26 && s < S1 + ARC_LEN + 30;
+const inCorner = (s) => s > S1 - 14 && s < S1 + ARC_LEN + 30;
 
 function carState(t, car) {
   const s = Math.max(0, carDistance(t, car));
@@ -99,12 +102,12 @@ function carState(t, car) {
   const right = rightOf(dir);
   const lat = car === 0 ? -LANE : LANE;
   // cars swing wide through the corner, then tuck back in
-  const wide = inCorner(s) ? Math.sin(clamp((s - (S1 - 26)) / (ARC_LEN + 56), 0, 1) * Math.PI) * 3.4 : 0;
+  const wide = inCorner(s) ? Math.sin(clamp((s - (S1 - 14)) / (ARC_LEN + 44), 0, 1) * Math.PI) * 3.4 : 0;
   const pos = p.clone().addScaledVector(right, lat + wide);
   pos.y = 0.62;
   let yaw = Math.atan2(-dir.x, -dir.z);
   // oversteer: the body points further into the turn than it travels
-  const drift = inCorner(s) ? Math.sin(clamp((s - (S1 - 26)) / (ARC_LEN + 56), 0, 1) * Math.PI) : 0;
+  const drift = inCorner(s) ? Math.sin(clamp((s - (S1 - 14)) / (ARC_LEN + 44), 0, 1) * Math.PI) : 0;
   yaw += drift * 0.62;
   // squat under launch, roll into the corner
   const launch = smooth(T_GREEN, T_GREEN + 0.9, t) * (1 - smooth(T_GREEN + 0.9, T_GREEN + 2.4, t));
@@ -277,14 +280,14 @@ const GIRL = (() => {
 })();
 
 function poseGirl(t) {
-  const walkIn = smooth(2.6, 5.4, t);
+  const walkIn = smooth(1.2, 3.3, t);
   const x = lerp(15, 0, eOut(walkIn));
   GIRL.g.position.set(x, 0, -17);
-  GIRL.g.rotation.y = lerp(-Math.PI / 2, Math.PI, smooth(4.9, 5.9, t));   // turns to face the cars
+  GIRL.g.rotation.y = lerp(-Math.PI / 2, Math.PI, smooth(2.9, 3.5, t));   // turns to face the cars
   const stride = walkIn < 1 ? Math.sin(t * 9.5) * 0.75 : Math.sin(t * 1.6) * 0.04;
   GIRL.legs[0].rotation.x = stride; GIRL.legs[1].rotation.x = -stride;
   // arm swings while walking, then the flag goes up, waves, and slashes down on green
-  const raise = smooth(5.7, 6.4, t), wave = smooth(6.4, 6.55, t) * (1 - smooth(6.9, 7.0, t));
+  const raise = smooth(3.5, 4.05, t), wave = smooth(4.05, 4.15, t) * (1 - smooth(4.32, T_GREEN, t));
   const drop = smooth(T_GREEN - 0.12, T_GREEN + 0.06, t);
   GIRL.arms[0].rotation.x = walkIn < 1 ? -stride * 0.7 : 0.12;
   GIRL.arms[1].rotation.x = lerp(walkIn < 1 ? stride * 0.7 : 0.1, -2.55, raise)
@@ -330,10 +333,10 @@ function makeParticles({ count, seed, tFrom, tTo, life, spread, rise, drag, size
   return { spec, geo, pos, aSize, aAlpha, drag };
 }
 
-const SMOKE = makeParticles({ count: 900, seed: 7771, tFrom: T_GREEN - 0.25, tTo: 19.8,
+const SMOKE = makeParticles({ count: 900, seed: 7771, tFrom: T_GREEN - 0.25, tTo: T_DRIFT1 + 0.5,
   life: 2.2, spread: 5.5, rise: 3.4, drag: 0.55, size: 46, colour: 0xbfc6d2,
   blending: THREE.NormalBlending, opacity: 0.5 });
-const SPARK = makeParticles({ count: 230, seed: 4242, tFrom: 15.9, tTo: 19.4,
+const SPARK = makeParticles({ count: 230, seed: 4242, tFrom: T_DRIFT0 - 0.2, tTo: T_DRIFT1 - 0.1,
   life: 0.5, spread: 16, rise: 6.0, drag: 0.95, size: 4.5, colour: 0xffb257,
   blending: THREE.AdditiveBlending, opacity: 0.85 });
 
@@ -364,7 +367,7 @@ function updateParticles(sys, t, gate) {
   sys.geo.attributes.aAlpha.needsUpdate = true;
 }
 // smoke only where it belongs: the launch burn-out and the corner
-const smokeGate = (ts) => (ts < T_GREEN + 1.9) || (ts > 15.8);
+const smokeGate = (ts) => (ts < T_GREEN + 1.6) || (ts > T_DRIFT0 - 0.4);
 
 /* ------------------------------ lights ---------------------------- */
 scene.add(new THREE.AmbientLight(0x38445e, 2.4));
@@ -411,53 +414,53 @@ const shake = (t, amp) => new V3(
 function look(pos, at, up) { camera.up.copy(up || new V3(0, 1, 0)); camera.position.copy(pos); camera.lookAt(at); }
 
 const SHOTS = [
-  { name: 'GRID', end: 3.2, fov: 56, cam(u, t) {
+  { name: 'GRID', end: 2.0, fov: 56, cam(u, t) {
       // between the two cars on the start line, looking down the strip.
       // wide lens + setback so both cars flank frame and the road runs out ahead
       look(new V3(0, lerp(1.15, 0.85, eInOut(u)), lerp(7.4, 3.2, eInOut(u))), new V3(0, 1.0, -90));
     } },
-  { name: 'SHE WALKS IN', end: 6.0, fov: 40, cam(u, t) {
+  { name: 'SHE WALKS IN', end: 3.6, fov: 40, cam(u, t) {
       const gp = GIRL.g.position;
       // hold her at a readable size and let her walk toward the lens
       look(new V3(lerp(7.4, 4.6, u), 1.45, lerp(-11.2, -12.6, u)),
            new V3(lerp(gp.x * 0.5, 0, u), 1.2, gp.z + 0.5));
     } },
-  { name: 'FLAG UP', end: 7.0, fov: 30, cam(u, t) {
+  { name: 'FLAG UP', end: 4.4, fov: 30, cam(u, t) {
       // low hero angle, pushing in as the flag goes up
       look(new V3(lerp(2.9, 2.1, u), lerp(0.42, 0.6, u), lerp(-12.4, -13.6, u)), new V3(0, 1.75, -17));
     } },
-  { name: 'TYRES', end: 8.3, fov: 38, cam(u, t) {
+  { name: 'TYRES', end: 5.6, fov: 38, cam(u, t) {
       // hard on the rear wheel: close enough that the tyre fills frame
       const w = wheelWorld(t, 0, 2).clone().setY(0.62);
       const eye = w.clone().add(new V3(-1.75, 0.16, lerp(0.1, 1.5, u)));
       look(eye.add(shake(t, 0.06 * smooth(T_GREEN, T_GREEN + 0.35, t))), w);
     } },
-  { name: 'LAUNCH PAST', end: 10.0, fov: 32, cam(u, t) {
+  { name: 'LAUNCH PAST', end: 6.9, fov: 32, cam(u, t) {
       const c = carState(t, 0);
       look(new V3(8.6, 0.45, -47).add(shake(t, 0.06 * (1 - u))), new V3(c.pos.x * 0.5, 0.85, c.pos.z));
     } },
-  { name: 'AERIAL', end: 13.0, fov: 40, cam(u, t) {
+  { name: 'AERIAL', end: 8.6, fov: 40, cam(u, t) {
       const a = carState(t, 0).pos, b = carState(t, 1).pos;
       const mid = a.clone().lerp(b, 0.5);
       look(mid.clone().add(new V3(lerp(26, -8, u), lerp(52, 34, u), lerp(30, 16, u))), mid);
     } },
-  { name: 'SIDE TRACK', end: 16.0, fov: 34, cam(u, t) {
+  { name: 'SIDE TRACK', end: 10.2, fov: 34, cam(u, t) {
       const c = carState(t, 0);
       const side = c.right.clone().multiplyScalar(-15).setY(1.45);
       look(c.pos.clone().add(side).add(shake(t, 0.02)), carState(t, 1).pos.clone().setY(0.9));
     } },
-  { name: 'DRIFT', end: 19.5, fov: 42, cam(u, t) {
+  { name: 'DRIFT', end: 12.6, fov: 42, cam(u, t) {
       // outside the corner, low, sweeping with the slide
       const c = carState(t, 0);
       const out = c.right.clone().multiplyScalar(19).setY(lerp(1.1, 4.2, u));
       look(c.pos.clone().add(out).add(shake(t, 0.09 * c.drift)), c.pos.clone().setY(0.8));
     } },
-  { name: 'LOW CHASE', end: 22.0, fov: 36, cam(u, t) {
+  { name: 'LOW CHASE', end: 13.9, fov: 36, cam(u, t) {
       const c = carState(t, 0);
       const back = c.dir.clone().multiplyScalar(-11).setY(lerp(0.55, 1.5, u));
       look(c.pos.clone().add(back).add(shake(t, 0.05)), carState(t + 0.35, 1).pos.clone().setY(1.0));
     } },
-  { name: 'GONE', end: 25.0, fov: 30, cam(u, t) {
+  { name: 'GONE', end: 15.0, fov: 30, cam(u, t) {
       const c = carState(t, 0);
       look(c.pos.clone().add(c.dir.clone().multiplyScalar(-26)).setY(lerp(2.0, 15, eInOut(u))),
            c.pos.clone().setY(1.0));
@@ -483,7 +486,7 @@ function draw(t) {
     const lead = carState(t, 0);
     carFill.position.copy(lead.pos).addScaledVector(lead.right, -4).setY(4.5);
     // only burns during the tyre shot, so the rubber is not a black disc
-    const on = smooth(6.95, 7.1, t) * (1 - smooth(8.15, 8.3, t));
+    const on = smooth(T_GREEN - 0.05, T_GREEN + 0.1, t) * (1 - smooth(5.45, 5.6, t));
     tyreKey.intensity = 55 * on;
     const w = wheelWorld(t, 0, 2).clone().setY(0.62);
     tyreKey.position.copy(w).add(new V3(-3.0, 1.9, 2.6));

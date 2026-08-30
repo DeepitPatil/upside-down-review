@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><title>Craze ad — blocking</title>
+<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}canvas{display:block}
+#hud{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:rgba(0,0,0,.55);
+font:600 15px/1.35 ui-monospace,Menlo,monospace;color:#fff;letter-spacing:.04em}
+#hud small{display:block;font-weight:400;opacity:.65;font-size:12px;margin-top:3px}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js"}}</script>
+</head><body><div id="hud"></div>
+<script type="module">
+import * as THREE from 'three';
+/* Blocking pass only. Grey boxes, flat light, no texture, no polish - the
+   point is to see where the camera is and where the bodies are in each of
+   the ten shots, nothing else. */
+const V3=THREE.Vector3, lerp=THREE.MathUtils.lerp, clamp=THREE.MathUtils.clamp;
+const CAP=new URLSearchParams(location.search).get('capture')==='1';
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:CAP});
+r.setPixelRatio(1); r.setSize(innerWidth,innerHeight); document.body.appendChild(r.domElement);
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x9ec8e0);
+const cam=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.05,400);
+scene.add(new THREE.HemisphereLight(0xffffff,0x556070,2.1));
+const key=new THREE.DirectionalLight(0xffffff,1.4); key.position.set(6,14,7); scene.add(key);
+
+const mat=c=>new THREE.MeshLambertMaterial({color:c});
+const M={court:mat(0x63b6b8),line:mat(0xeeeeee),wall:mat(0xb98070),
+         her:mat(0xd9d3c4),him:mat(0xa9a296),ball:mat(0xd8e838),
+         gold:mat(0xd8c08a),neon:mat(0x8a3fd0),grid:mat(0xdddddd)};
+
+/* court + surround */
+const court=new THREE.Mesh(new THREE.BoxGeometry(10,0.2,22),M.court);
+court.position.y=-0.1; scene.add(court);
+for(const z of [-11,0,11]){const l=new THREE.Mesh(new THREE.BoxGeometry(10,0.02,0.14),M.line);
+  l.position.set(0,0.02,z); scene.add(l);}
+const mid=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.02,22),M.line); mid.position.y=0.02; scene.add(mid);
+const net=new THREE.Mesh(new THREE.BoxGeometry(10,0.9,0.06),mat(0x445055));
+net.position.set(0,0.45,0); scene.add(net);
+const wall=new THREE.Mesh(new THREE.BoxGeometry(22,2.4,0.4),M.wall);
+wall.position.set(0,1.2,-13); scene.add(wall);
+
+/* two blocking figures: a box torso, a sphere head, two leg boxes. that is
+   all a blocking pass needs to read pose and screen position. */
+function figure(m,scale,wide){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.BoxGeometry(wide?0.62:0.44,0.72,wide?0.36:0.26),m);
+  t.position.y=1.16; g.add(t);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(0.15,12,10),m); h.position.y=1.72; g.add(h);
+  const arms=[];
+  for(const s of [-1,1]){
+    const a=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.62,0.12),m);
+    a.geometry.translate(0,-0.31,0); a.position.set(s*(wide?0.38:0.28),1.5,0); g.add(a); arms.push(a);}
+  const legs=[];
+  for(const s of [-1,1]){
+    const l=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.82,0.16),m);
+    l.geometry.translate(0,-0.41,0); l.position.set(s*0.13,0.82,0); g.add(l); legs.push(l);}
+  const pad=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.34,0.04),mat(0x333a40));
+  pad.position.set(0,-0.55,0); arms[1].add(pad);
+  g.scale.setScalar(scale); scene.add(g);
+  return {g,arms,legs,pad};
+}
+const HER=figure(M.her,1.0,false), HIM=figure(M.him,1.02,true);
+const ball=new THREE.Mesh(new THREE.SphereGeometry(0.12,14,10),M.ball); scene.add(ball);
+
+/* the three swap worlds - crude stand-ins, shown one at a time */
+function world(colr,n,spread,hi){
+  const g=new THREE.Group(); g.visible=false;
+  for(let i=0;i<n;i++){
+    const w=0.9+((i*37)%9)/4, h=hi*(0.4+((i*53)%11)/11);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),mat(colr));
+    b.position.set(((i*71)%spread)-spread/2, h/2-0.4, -6-((i*29)%14));
+    g.add(b);}
+  scene.add(g); return g;
+}
+const WBALL=world(0xd8c08a,16,18,5.0);     // gilded interior
+const WNEON=world(0x8a3fd0,20,22,9.0);     // neon city
+const WDAY =world(0xbfc6cc,14,20,7.0);     // day city
+/* the board: a flat grid of tiles that fills in */
+const board=new THREE.Group(); board.visible=false; scene.add(board);
+const tiles=[];
+for(let i=0;i<15;i++){
+  const t=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.0),M.grid);
+  t.rotation.x=-Math.PI/2; t.position.set((i%3-1)*1.7, 0.05, (Math.floor(i/3)-2)*1.2);
+  board.add(t); tiles.push(t);}
+
+/* ------------------------------- shots ---------------------------------- */
+const SHOTS=[
+ {n:'1  MACRO BALL',           t:0.4, d:'lens right against the ball'},
+ {n:'2  STRAIGHT DOWN',        t:3.0, d:'overhead, she lies spread-eagled, ball grows to camera'},
+ {n:'3  HER, TO CAMERA',       t:4.7, d:'medium, holds the ball up beside her face'},
+ {n:'4  THE WALK',             t:6.0, d:'low wide, both walk at camera, balls on court'},
+ {n:'5  HIM, TO CAMERA',       t:6.8, d:'tight chest-up, dead centre'},
+ {n:'6  THE BOARD',            t:9.4, d:'flat overhead, court divides into a grid of stills'},
+ {n:'7  THE WORLD CHANGES',    t:11.9,d:'low, up at her smash. she is locked, the world swaps'},
+ {n:'8  HIM ON COURT',         t:14.3,d:'he stands, ball at his feet, then swings low'},
+ {n:'9  THE LAST BALL',        t:15.0,d:'wide down the empty court, ball flies at lens'},
+];
+let a=0; for(const s of SHOTS){s.s=a;a=s.t;}
+const TOTAL=15.0;
+
+function reset(){
+  for(const g of [WBALL,WNEON,WDAY]) g.visible=false;
+  board.visible=false; court.visible=true; net.visible=true; wall.visible=true;
+  HER.g.visible=HIM.g.visible=ball.visible=true;
+  HER.g.rotation.set(0,0,0); HIM.g.rotation.set(0,0,0);
+  for(const p of [HER,HIM]){p.arms[0].rotation.set(0,0,0.18);p.arms[1].rotation.set(0,0,-0.18);
+    p.legs[0].rotation.set(0,0,0);p.legs[1].rotation.set(0,0,0);}
+  HER.g.position.set(-1.2,0,3); HIM.g.position.set(1.2,0,3);
+}
+function draw(t){
+  reset();
+  const sh=SHOTS.find(s=>t<s.t)||SHOTS[SHOTS.length-1];
+  const u=clamp((t-sh.s)/(sh.t-sh.s),0,1);
+  cam.up.set(0,1,0); cam.fov=42;
+
+  if(sh.n[0]==='1'){                                  // macro on the ball
+    ball.position.set(0,1.4,4); HER.g.visible=HIM.g.visible=false;
+    cam.fov=34; cam.position.set(0,1.4,4.55); cam.lookAt(ball.position);
+  } else if(sh.n[0]==='2'){                           // straight down
+    HIM.g.visible=false;
+    HER.g.position.set(0,0.06,2); HER.g.rotation.set(-Math.PI/2,0,0);
+    HER.arms[0].rotation.z=1.15; HER.arms[1].rotation.z=-1.15;
+    HER.legs[0].rotation.z=0.42; HER.legs[1].rotation.z=-0.42;
+    ball.position.set(0,lerp(1.0,7.2,u),2);           // rises toward the lens
+    cam.fov=46; cam.position.set(0,8.2,2.001); cam.lookAt(0,0,2);
+  } else if(sh.n[0]==='3'){                           // her, to camera
+    HIM.g.visible=false; HER.g.position.set(0,0,1.5);
+    HER.arms[1].rotation.set(0,0,-2.5); ball.position.set(0.42,1.62,1.5);
+    cam.fov=36; cam.position.set(0,1.35,5.6); cam.lookAt(0,1.28,1.5);
+  } else if(sh.n[0]==='4'){                           // the walk
+    const z=lerp(6.5,1.6,u);
+    HER.g.position.set(0.62,0,z); HIM.g.position.set(-0.62,0,z);
+    const sw=Math.sin(t*7)*0.34;
+    HER.legs[0].rotation.x=sw; HER.legs[1].rotation.x=-sw;
+    HIM.legs[0].rotation.x=-sw; HIM.legs[1].rotation.x=sw;
+    ball.position.set(2.2,0.12,4);
+    cam.fov=40; cam.position.set(0,0.9,8.2); cam.lookAt(0,1.05,z);
+  } else if(sh.n[0]==='5'){                           // him, to camera
+    HER.g.visible=false; HIM.g.position.set(0,0,1.5); ball.visible=false;
+    cam.fov=34; cam.position.set(0,1.42,5.0); cam.lookAt(0,1.34,1.5);
+  } else if(sh.n[0]==='6'){                           // the board
+    court.visible=net.visible=wall.visible=false;
+    HER.g.visible=HIM.g.visible=ball.visible=false;
+    scene.background.set(0xd8a294); board.visible=true;
+    tiles.forEach((tl,i)=>tl.visible = u > (i+1)/(tiles.length+2));
+    cam.fov=44; cam.position.set(0,9,0.001); cam.lookAt(0,0,0);
+  } else if(sh.n[0]==='7'){                           // the world changes
+    HIM.g.visible=false; ball.visible=true;
+    // her pose and her place in frame are LOCKED. only the world swaps.
+    HER.g.position.set(0,lerp(0.5,1.5,Math.sin(u*Math.PI)),1.2);
+    HER.arms[1].rotation.set(0,0,-2.9); HER.arms[0].rotation.set(0,0,1.5);
+    HER.legs[0].rotation.x=-0.5; HER.legs[1].rotation.x=0.35;
+    ball.position.set(0.25,HER.g.position.y+2.25,1.2);
+    const k=u<0.25?0:u<0.5?1:u<0.78?2:3;
+    if(k===1){WBALL.visible=true;scene.background.set(0xe2cfa8);court.visible=false;wall.visible=false;}
+    else if(k===2){WDAY.visible=true;scene.background.set(0xa9bccd);wall.visible=false;}
+    else if(k===3){WNEON.visible=true;scene.background.set(0x2a1040);court.visible=false;wall.visible=false;}
+    cam.fov=48; cam.position.set(0.6,0.35,4.6); cam.lookAt(0,2.1,1.2);
+  } else if(sh.n[0]==='8'){                           // him on court
+    HER.g.visible=false; HIM.g.position.set(0,0,1.5);
+    HIM.arms[1].rotation.set(0,0,-0.9+Math.sin(u*Math.PI*2)*0.5);
+    ball.position.set(0.5,0.12,2.4);
+    cam.fov=40; cam.position.set(0,1.45,7.0); cam.lookAt(0,1.05,1.5);
+  } else {                                            // the last ball
+    HER.g.visible=false; HIM.g.position.set(0,0,-9);
+    ball.position.set(0,lerp(1.6,1.35,u),lerp(-4,7.4,u));
+    cam.fov=42; cam.position.set(0,1.4,8); cam.lookAt(0,1.3,-6);
+  }
+  hud.innerHTML=`${t.toFixed(2)}s &nbsp; ${sh.n}<small>${sh.d}</small>`;
+  r.render(scene,cam);
+}
+const hud=document.getElementById('hud');
+const clock=new THREE.Clock(); let t=0,paused=false;
+(function loop(){requestAnimationFrame(loop);
+  if(!paused)t=(t+Math.min(clock.getDelta(),0.05))%TOTAL; draw(t);})();
+addEventListener('keydown',e=>{if(e.code==='Space'){paused=!paused;e.preventDefault();}
+  else if(e.code==='ArrowRight'){paused=true;t=(t+0.2)%TOTAL;draw(t);}
+  else if(e.code==='ArrowLeft'){paused=true;t=(t-0.2+TOTAL)%TOTAL;draw(t);}});
+addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();
+  r.setSize(innerWidth,innerHeight);});
+window.__anim={duration:TOTAL,seek(x){paused=true;t=clamp(x,0,TOTAL);
+  cam.updateProjectionMatrix();draw(t);return t;}};
+</script></body></html>

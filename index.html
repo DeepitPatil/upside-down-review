@@ -9,7 +9,33 @@ video,img{width:100%;border-radius:8px;background:#000;display:block}
 .txt{display:inline-block;padding:9px 13px;background:#1b212b;border-radius:6px;color:#7fb0ff;
 text-decoration:none}.item{margin-bottom:20px}
 </style></head><body><h1>Upside Down — Seedance experiment</h1>
-<p>Served from GitHub Pages. Videos are faststart-remuxed and range-served.</p><section><h2>Flatiron &mdash; the three specifications</h2>
+<p>Served from GitHub Pages. Videos are faststart-remuxed and range-served.</p><section><h2>Flatiron &mdash; RESULTS: coordinates vs code vs diagrams</h2>
+<p>All three ran at 480P, 15s. H3 Max for 1 and 2 with <code>prompt_expansion_mode: disabled</code>
+&mdash; the default rewrites your prompt with an LLM first, which would have measured the rewriter
+instead of the model. Seedance 2.0 for 3, with the two diagrams as [Image1]/[Image2].
+<b>All three came back as one unbroken take: 0 cuts detected in every one.</b></p>
+<div class=item><h3>flatiron-cmp-beats.png</h3><p>Rows top to bottom: previz &middot; coordinates &middot; code &middot; diagrams.
+Columns: 0.3 / 2.5 / 5.0 / 7.6 / 11.0 / 14.5s.</p>
+<a href="media/flatiron-cmp-beats.png"><img loading=lazy src="media/flatiron-cmp-beats.png"></a></div>
+<div class=item><h3>flatiron-cmp-dense.png</h3><p>Same three results at 0.05 / 3.8 / 6.2 / 8.8 / 10.2 / 13.0 / 14.95s.</p>
+<a href="media/flatiron-cmp-dense.png"><img loading=lazy src="media/flatiron-cmp-dense.png"></a></div>
+<div class=item><h3>1 &middot; coordinates &mdash; flatiron-1-coordinates.mp4</h3>
+<p>A competent continuous aerial orbit, and nothing more. Never reaches street level, never climbs,
+never crosses the roof. The 31-row coordinate table changed nothing detectable versus what
+&ldquo;drone shot of the Flatiron at golden hour&rdquo; would have produced.</p>
+<video controls preload=metadata playsinline src="media/flatiron-1-coordinates.mp4"></video></div>
+<div class=item><h3>2 &middot; code &mdash; flatiron-2-code.mp4</h3>
+<p>Best structural match. Approach &rarr; climb the prow &rarr; reach the top &rarr; <b>cross the roof,
+water tower clearly in frame</b> &rarr; orbit away. Four of five beats in the right order. It misses
+the last one: it ends high instead of dropping back to the street, so the loop does not close.</p>
+<video controls preload=metadata playsinline src="media/flatiron-2-code.mp4"></video></div>
+<div class=item><h3>3 &middot; diagrams &mdash; flatiron-3-diagrams.mp4</h3>
+<p>The only one that starts AND ends at street level looking up at the prow &mdash; the only one that
+closes the loop. The altitude arc is right. But it drew the red path line and the numbered dots into
+<b>100% of frames</b>, against an explicit instruction not to. Measured: peak 2.17% of frame area in
+annotation-red, mean 0.55%, versus 0.000% for the previz control and 0.000% for both H3 Max runs.</p>
+<video controls preload=metadata playsinline src="media/flatiron-3-diagrams.mp4"></video></div>
+</section><section><h2>Flatiron &mdash; the three specifications</h2>
 <p>Same shot, described three ways. The scene block, lighting, lens and single-take rule are
 <em>identical</em> in all three &mdash; the only thing that varies is how the camera move is
 expressed. Nothing generated yet.</p>

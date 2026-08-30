@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flatiron drone — previz</title>
+<style>html,body{margin:0;height:100%;background:#0a0d14;overflow:hidden}canvas{display:block}
+#slate{position:fixed;left:14px;bottom:12px;font:11px/1.55 ui-monospace,Menlo,monospace;
+letter-spacing:.06em;color:rgba(255,255,255,.62);text-shadow:0 1px 3px #000;pointer-events:none;
+white-space:pre}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.180.0/build/three.module.js",
+"three/addons/":"https://unpkg.com/three@0.180.0/examples/jsm/"}}</script></head>
+<body><div id="slate"></div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+/* ------------------------------------------------------------------ *
+ * One unbroken 15s drone take on the Flatiron Building, golden hour.
+ *
+ * This previz exists to be RE-SPECIFIED three ways (coordinates, code,
+ * diagram), so every design choice below serves being describable:
+ *
+ *  - WORLD UNITS ARE METRES. Building centroid at the origin, the prow
+ *    points to +Z (north). Every camera position is a real coordinate.
+ *  - EVERY MOVE IS A CLOSED-FORM PRIMITIVE. A straight line, a vertical,
+ *    a push-over, an expanding descending helix. Nothing hand-keyed.
+ *  - THE LENS NEVER CHANGES. 60 deg vertical FOV (ultrawide, FPV) so framing
+ *    is a pure function of position. No zoom to confound the readout.
+ *  - THE HORIZON IS ALWAYS LEVEL. Zero roll, like a real 3-axis gimbal,
+ *    so orientation is fully determined by position + look-at target.
+ *  - THE PATH IS A CLOSED LOOP. One full circumnavigation, half of it
+ *    over the roof and half around the west side, ending on the same
+ *    axis it started on. The last frame rhymes with the first, which is
+ *    the cheapest possible check that a model tracked the whole sweep.
+ *
+ * The triangle is the instrument: the building's apparent width tells
+ * you the orbit angle from any single frame.
+ * ------------------------------------------------------------------ */
+const P = new URLSearchParams(location.search);
+const BARE = P.get('bare')==='1', CAPTURE = P.get('capture')==='1';
+const V3=THREE.Vector3, clamp=THREE.MathUtils.clamp, lerp=THREE.MathUtils.lerp;
+const D2R=THREE.MathUtils.degToRad;
+const ss=(e0,e1,x)=>{const q=clamp((x-e0)/(e1-e0),0,1);return q*q*(3-2*q);};
+const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+
+/* ------------------------- building geometry ---------------------- */
+const APEX_Z=30, BASE_Z=-30, BASE_HW=13, H=88;   // metres
+const NOSE_R=2.0;                                // rounded prow radius
+
+// Footprint outline in world XZ, wound C -> nose -> B -> C. The apex is
+// filleted, so the prow is a ~4m rounded nose, not a knife edge.
+const OUTLINE=(()=>{
+  const al=Math.atan2(BASE_HW, APEX_Z-BASE_Z);        // half-angle at the apex
+  const d=NOSE_R/Math.sin(al), L=d*Math.cos(al);
+  const A=new THREE.Vector2(0,APEX_Z);
+  const uB=new THREE.Vector2(-BASE_HW-0,BASE_Z-APEX_Z).normalize();
+  const uC=new THREE.Vector2( BASE_HW-0,BASE_Z-APEX_Z).normalize();
+  const Tb=A.clone().addScaledVector(uB,L), Tc=A.clone().addScaledVector(uC,L);
+  const Cf=new THREE.Vector2(0,APEX_Z-d);
+  const a0=Math.atan2(Tc.y-Cf.y,Tc.x-Cf.x), a1=Math.atan2(Tb.y-Cf.y,Tb.x-Cf.x);
+  const pts=[new THREE.Vector2(BASE_HW,BASE_Z)];
+  for(let i=0;i<=8;i++){const a=lerp(a0,a1,i/8);
+    pts.push(new THREE.Vector2(Cf.x+Math.cos(a)*NOSE_R, Cf.y+Math.sin(a)*NOSE_R));}
+  pts.push(new THREE.Vector2(-BASE_HW,BASE_Z));
+  return pts;
+})();
+const CENTROID=new THREE.Vector2(0,(APEX_Z+BASE_Z+BASE_Z)/3);
+const scaleOutline=k=>OUTLINE.map(p=>p.clone().sub(CENTROID).multiplyScalar(k).add(CENTROID));
+
+function prism(outline, h){                        // extrude an XZ outline up +Y
+  const s=new THREE.Shape(outline.map(p=>new THREE.Vector2(p.x,-p.y)));
+  const g=new THREE.ExtrudeGeometry(s,{depth:h,bevelEnabled:false,curveSegments:2});
+  g.rotateX(-Math.PI/2); g.computeVertexNormals(); return g;
+}
+
+/* ----------------------------- renderer --------------------------- */
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:CAPTURE});
+renderer.setPixelRatio(CAPTURE?1:Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.98;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9dc0e0);
+scene.fog=new THREE.FogExp2(0xe0c398,0.0022);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.25,2400);
+
+const std=o=>new THREE.MeshStandardMaterial({...o});
+const M={
+  stone: std({color:0xc9b79c,roughness:0.86}),   // limestone / terracotta body
+  rust:  std({color:0xb5a288,roughness:0.92}),   // rusticated base
+  trim:  std({color:0xd8cbb4,roughness:0.8}),    // bands + cornice
+  glass: std({color:0x2a3444,roughness:0.22,metalness:0.65}),
+  road:  std({color:0x46474f,roughness:0.95}),
+  walk:  std({color:0x7c7a74,roughness:0.95}),
+  city:  std({color:0x9b9083,roughness:0.9}),
+  city2: std({color:0x7d7468,roughness:0.9}),
+  brick: std({color:0x8a5f4b,roughness:0.95}),
+  cab:   std({color:0xf2b829,roughness:0.55,metalness:0.2}),
+  car:   std({color:0x394254,roughness:0.5,metalness:0.3}),
+  leaf:  std({color:0x4d6b3c,roughness:1.0}),
+  bark:  std({color:0x4a4038,roughness:1.0}),
+  ped:   std({color:0x2e3138,roughness:1.0}),
+  tank:  std({color:0x6b533c,roughness:0.95}),
+  tar:   std({color:0x4f4a44,roughness:1.0}),
+};
+
+/* ------------------------------ light ----------------------------- */
+// Low golden-hour sun from the west-northwest. The east face stays in
+// shadow throughout, so the light itself reports the orbit angle
+// alongside the silhouette.
+const sun=new THREE.DirectionalLight(0xffbe72,5.4);
+sun.position.set(-300,68,124); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-210,right:210,top:210,bottom:-210,near:1,far:900});
+sun.shadow.bias=-0.0006; scene.add(sun);
+scene.add(new THREE.HemisphereLight(0x9ec6f5,0x8f7d63,1.15));
+scene.add(new THREE.AmbientLight(0xffe0bd,0.22));
+
+/* --------------------------- the Flatiron ------------------------- */
+const tower=new THREE.Group(); scene.add(tower);
+{
+  const body=new THREE.Mesh(prism(OUTLINE,H),M.stone);
+  body.castShadow=true; body.receiveShadow=true; tower.add(body);
+
+  const base=new THREE.Mesh(prism(scaleOutline(1.035),12),M.rust);
+  base.castShadow=true; base.receiveShadow=true; tower.add(base);
+
+  const corn=new THREE.Mesh(prism(scaleOutline(1.075),5.2),M.trim);
+  corn.position.y=H-5.2; corn.castShadow=true; tower.add(corn);
+  const lip=new THREE.Mesh(prism(scaleOutline(1.045),2.0),M.trim);
+  lip.position.y=H-7.4; lip.castShadow=true; tower.add(lip);
+
+  // roof furniture: the crest beat needs something to crest over
+  const roof=new THREE.Mesh(prism(scaleOutline(0.985),0.6),M.tar);
+  roof.position.y=H; roof.receiveShadow=true; tower.add(roof);
+  const tk=new THREE.Mesh(new THREE.CylinderGeometry(3.0,3.0,6.2,14),M.tank);
+  tk.position.set(-1.5,H+8.6,-14); tk.castShadow=true; tower.add(tk);
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(3.3,2.0,14),M.tank);
+  cone.position.set(-1.5,H+12.7,-14); tower.add(cone);
+  for(const s of [-1,1]) for(const q of [-1,1]){
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.3,5.6,0.3),M.bark);
+    leg.position.set(-1.5+s*2.1,H+2.8,-14+q*2.1); tower.add(leg);
+  }
+  for(const b of [[4.5,-22,3.2,2.4,4],[ -6.5,-25,4.0,2.0,3.2]]){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(b[2],b[3],b[4]),M.walk);
+    m.position.set(b[0],H+b[3]/2,b[1]); m.castShadow=true; tower.add(m);
+  }
+
+  /* window grid + floor bands, walked along every outline segment */
+  const ROW0=14.2, DY=3.9, ROWS=18, COLW=3.35;
+  const seg=[];
+  for(let i=0;i<OUTLINE.length;i++){
+    const p=OUTLINE[i], q=OUTLINE[(i+1)%OUTLINE.length];
+    const dx=q.x-p.x, dz=q.y-p.y, len=Math.hypot(dx,dz);
+    if(len<0.35) continue;
+    seg.push({p,dir:new THREE.Vector2(dx/len,dz/len),
+      n:new THREE.Vector2(dz/len,-dx/len),len,
+      yaw:Math.atan2(dz/len,dx/len)});           // yaw for a +Z-facing box below
+  }
+  let nWin=0; for(const s of seg) nWin+=Math.max(0,Math.floor(s.len/COLW));
+  const gGlass=new THREE.BoxGeometry(2.0,2.55,0.5);
+  const gSill =new THREE.BoxGeometry(2.5,0.3,0.85);
+  const glass=new THREE.InstancedMesh(gGlass,M.glass,nWin*ROWS);
+  const sill =new THREE.InstancedMesh(gSill ,M.trim ,nWin*ROWS);
+  const band =new THREE.InstancedMesh(new THREE.BoxGeometry(1,0.42,0.5),M.trim,seg.length*ROWS);
+  const dm=new THREE.Object3D(); let wi=0,bi=0;
+  for(const s of seg){
+    // normal points outward (winding is C -> nose -> B); face the box along it
+    const yaw=Math.atan2(s.n.x,s.n.y);
+    const cols=Math.max(0,Math.floor(s.len/COLW));
+    const pad=(s.len-cols*COLW)/2;
+    for(let r=0;r<ROWS;r++){
+      const y=ROW0+r*DY;
+      for(let c=0;c<cols;c++){
+        const d=pad+COLW*(c+0.5);
+        const x=s.p.x+s.dir.x*d, z=s.p.y+s.dir.y*d;
+        dm.position.set(x+s.n.x*0.10,y+0.55,z+s.n.y*0.10);
+        dm.rotation.set(0,yaw,0); dm.scale.setScalar(1);
+        dm.updateMatrix(); glass.setMatrixAt(wi,dm.matrix);
+        dm.position.set(x+s.n.x*0.28,y-0.95,z+s.n.y*0.28);
+        dm.updateMatrix(); sill.setMatrixAt(wi,dm.matrix);
+        wi++;
+      }
+      const mx=s.p.x+s.dir.x*s.len/2, mz=s.p.y+s.dir.y*s.len/2;
+      dm.position.set(mx+s.n.x*0.22,y-2.05,mz+s.n.y*0.22);
+      dm.rotation.set(0,yaw,0); dm.scale.set(s.len,1,1);
+      dm.updateMatrix(); band.setMatrixAt(bi++,dm.matrix);
+    }
+  }
+  glass.count=wi; sill.count=wi; band.count=bi;
+  glass.castShadow=sill.castShadow=band.castShadow=true;
+  tower.add(glass,sill,band);
+}
+
+/* ------------------------------ streets --------------------------- */
+// Two avenues run along the long faces and converge north of the prow;
+// 23rd Street crosses behind the base. That wedge is why the building
+// is the shape it is, and from the air it explains the whole geometry.
+const AVE_YAW=Math.atan2(BASE_HW,APEX_Z-BASE_Z);   // 0.2127 rad = 12.2 deg
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1600,1600),M.walk);
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+function strip(cx,cz,yaw,len,wid){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(wid,0.12,len),M.road);
+  m.position.set(cx,0.06,cz); m.rotation.y=yaw; m.receiveShadow=true; scene.add(m); return m;
+}
+strip(-24.6,-1.0, AVE_YAW,420,19);   // Broadway, west face
+strip( 24.6,-1.0,-AVE_YAW,420,19);   // Fifth Avenue, east face
+strip(  0  ,-48.0,Math.PI/2,460,20); // 23rd Street
+
+/* --------------------------- surrounding city --------------------- */
+const PARK={x0:44,x1:132,z0:-30,z1:74};
+{
+  const rnd=mul(70213);
+  const inPark=(x,z)=>x>PARK.x0-6&&x<PARK.x1+6&&z>PARK.z0-6&&z<PARK.z1+6;
+  const near=(x,z,cx,cz,yaw,w)=>{         // distance to a rotated strip's axis
+    const dx=x-cx, dz=z-cz;
+    return Math.abs(dx*Math.cos(yaw)-dz*Math.sin(yaw))<w;
+  };
+  for(let gx=-9;gx<=9;gx++) for(let gz=-9;gz<=9;gz++){
+    const x=gx*38+(rnd()-0.5)*12, z=gz*38+(rnd()-0.5)*12;
+    if(Math.hypot(x,z)<86) continue;                         // the drone's airspace
+    if(inPark(x,z)) continue;
+    if(near(x,z,-24.6,-1.0, AVE_YAW,17)&&z>-150&&z<150) continue;
+    if(near(x,z, 24.6,-1.0,-AVE_YAW,17)&&z>-150&&z<150) continue;
+    if(Math.abs(z+48)<17) continue;                          // 23rd St
+    const far=Math.hypot(x,z)>210;
+    const w=17+rnd()*15, d=17+rnd()*15,
+          h=far ? 26+rnd()*rnd()*92 : 16+rnd()*rnd()*44;
+    const q=rnd();
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
+      q<0.34?M.city:q<0.68?M.city2:M.brick);
+    b.position.set(x,h/2,z); b.castShadow=true; b.receiveShadow=true; scene.add(b);
+    if(h>44){                                                // a crowning setback
+      const c=new THREE.Mesh(new THREE.BoxGeometry(w*0.6,10,d*0.6),M.city2);
+      c.position.set(x,h+5,z); c.castShadow=true; scene.add(c);
+    }
+  }
+  for(let i=0;i<64;i++){                                     // Madison Square Park
+    const x=lerp(PARK.x0,PARK.x1,rnd()), z=lerp(PARK.z0,PARK.z1,rnd());
+    const h=5+rnd()*5;
+    const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,h,6),M.bark);
+    tr.position.set(x,h/2,z); scene.add(tr);
+    const cp=new THREE.Mesh(new THREE.SphereGeometry(2.4+rnd()*1.8,8,6),M.leaf);
+    cp.position.set(x,h+2.0,z); cp.castShadow=true; scene.add(cp);
+  }
+  const lawn=new THREE.Mesh(new THREE.BoxGeometry(PARK.x1-PARK.x0,0.2,PARK.z1-PARK.z0),M.leaf);
+  lawn.position.set((PARK.x0+PARK.x1)/2,0.1,(PARK.z0+PARK.z1)/2);
+  lawn.receiveShadow=true; scene.add(lawn);
+}
+
+/* ------------------------ deterministic traffic ------------------- */
+// Every vehicle and pedestrian is a pure function of t, so seek() is
+// exact and the capture is reproducible frame for frame.
+const traffic=[];
+{
+  const rnd=mul(1177);
+  const lanes=[
+    {cx:-24.6,cz:-1.0,yaw: AVE_YAW,dir: 1,off:-4.5},
+    {cx:-24.6,cz:-1.0,yaw: AVE_YAW,dir:-1,off: 4.5},
+    {cx: 24.6,cz:-1.0,yaw:-AVE_YAW,dir: 1,off:-4.5},
+    {cx: 24.6,cz:-1.0,yaw:-AVE_YAW,dir:-1,off: 4.5},
+    {cx:0,cz:-48.0,yaw:Math.PI/2,dir: 1,off:-5.0},
+    {cx:0,cz:-48.0,yaw:Math.PI/2,dir:-1,off: 5.0},
+  ];
+  for(const L of lanes) for(let i=0;i<9;i++){
+    const cab=rnd()<0.55;
+    const g=new THREE.Group();
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1.9,1.35,4.5),cab?M.cab:M.car);
+    b.position.y=0.85; b.castShadow=true; g.add(b);
+    const c=new THREE.Mesh(new THREE.BoxGeometry(1.75,1.0,2.2),cab?M.cab:M.car);
+    c.position.set(0,1.9,-0.3); c.castShadow=true; g.add(c);
+    scene.add(g);
+    traffic.push({g,L,s0:rnd()*200,v:11+rnd()*7});
+  }
+  for(let i=0;i<150;i++){                                   // sidewalk crowd
+    const L=lanes[(i*7)%lanes.length];
+    const p=new THREE.Mesh(new THREE.CapsuleGeometry(0.28,0.95,3,6),M.ped);
+    p.castShadow=true; scene.add(p);
+    traffic.push({ped:p,L,s0:rnd()*200,v:(rnd()<0.5?-1:1)*1.35,
+      off:L.off+(L.off<0?-6.4:6.4)+(rnd()-0.5)*1.6});
+  }
+}
+function poseTraffic(t){
+  for(const o of traffic){
+    const L=o.L, cy=Math.cos(L.yaw), sy=Math.sin(L.yaw);
+    const s=((o.s0+o.v*t)%200+200)%200-100;
+    const off=o.off!==undefined?o.off:L.off;
+    const x=L.cx+sy*s*L.dir+cy*off, z=L.cz+cy*s*L.dir-sy*off;
+    if(o.g){ o.g.position.set(x,0,z); o.g.rotation.y=L.yaw+(L.dir<0?Math.PI:0); }
+    else   { o.ped.position.set(x,0.95,z); }
+  }
+}
+
+/* --------------------------- post ---------------------------------- */
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.28,0.75,0.9);
+composer.addPass(bloom); composer.addPass(new OutputPass());
+
+/* ============================ THE TAKE ============================= *
+ * Five moves, one unbroken shot, no cut anywhere. Each move is a
+ * closed-form primitive so it can be restated as coordinates, as code,
+ * or as a diagram without losing anything.
+ * ================================================================== */
+function rampFn(a,b,v0=0,v1=0){
+  // A velocity profile integrated once into a position curve. v0 and v1
+  // are the fractional speeds AT the segment ends: leaving them non-zero
+  // is what lets the drone carry momentum across a beat boundary instead
+  // of stopping dead there. Only the first and last beats reach zero.
+  const N=512,v=new Float64Array(N+1),s=new Float64Array(N+1);
+  for(let i=0;i<=N;i++){const u=i/N;
+    v[i]=(v0+(1-v0)*ss(0,Math.max(a,1e-6),u))*(1-(1-v1)*ss(1-Math.max(b,1e-6),1,u));}
+  let acc=0; for(let i=1;i<=N;i++){acc+=(v[i]+v[i-1])/2/N; s[i]=acc;}
+  for(let i=0;i<=N;i++) s[i]/=s[N];
+  return u=>{const x=clamp(u,0,1)*N,i=Math.min(N-1,Math.floor(x)),f=x-i;
+    return s[i]+(s[i+1]-s[i])*f;};
+}
+//        ease-in  ease-out  speed at start / end of the beat
+const rA=rampFn(0.30,0.30, 0.00, 0.55),   // lifts off from rest
+      rB=rampFn(0.25,0.10, 0.55, 1.00),   // carries straight into the crest
+      rC=rampFn(0.10,0.12, 1.00, 0.70),   // carves south over the roof
+      rD=rampFn(0.12,0.14, 0.70, 0.75),   // carves west into the orbit
+      rE=rampFn(0.14,0.45, 0.75, 0.00);   // settles, and the shot lands
+
+const K={A:[0.0,2.0],B:[2.0,4.6],C:[4.6,7.6],D:[7.6,12.6],E:[12.6,15.0]};
+const TOTAL=15.0;
+// horizontal polar: azimuth measured from +Z (the prow) toward +X (east)
+const pol=(th,r,y)=>new V3(Math.sin(D2R(th))*r,y,Math.cos(D2R(th))*r);
+// vertical polar for the crest: an arc in the YZ plane about a point on
+// the building axis, which carries the drone over the roof without ever
+// reversing direction
+const CC=new V3(0,70,-4);
+const vert=(ph,r)=>new V3(0,CC.y+Math.sin(D2R(ph))*r,CC.z+Math.cos(D2R(ph))*r);
+// The crest's arc is derived from the beats on either side of it rather
+// than hand-tuned, so the seams are continuous by construction.
+const B_END=new V3(0,95,38), C_END=new V3(0,100,-46);
+const toVert=p=>{const d=p.clone().sub(CC);
+  return{r:Math.hypot(d.y,d.z),ph:Math.atan2(d.y,d.z)*180/Math.PI};};
+const VC0=toVert(B_END), VC1=toVert(C_END);
+
+/* The circuit is ONE closed loop that is not planar: up the front face,
+   over the roof, then down and around the west side back to the front.
+   Half the revolution happens in the vertical plane (beat C) and half in
+   the horizontal one (beat D), which is why it reads as a single
+   continuous circumnavigation and never doubles back on itself. */
+function camPath(t){
+  if(t<K.A[1]){                                   // A - low straight push-in
+    const u=rA((t-K.A[0])/(K.A[1]-K.A[0]));
+    return {beat:'A \u00b7 PROW APPROACH',th:0,r:lerp(95,44,u),
+      pos:new V3(0,lerp(4,7,u),lerp(95,44,u)), tgt:new V3(0,lerp(10,16,u),30)};
+  }
+  if(t<K.B[1]){                                   // B - vertical climb up the prow
+    const u=rB((t-K.B[0])/(K.B[1]-K.B[0]));
+    return {beat:'B \u00b7 PROW CLIMB',th:0,r:lerp(44,38,u),
+      pos:new V3(0,lerp(7,B_END.y,u),lerp(44,B_END.z,u)), tgt:new V3(0,lerp(16,82,u),30)};
+  }
+  if(t<K.C[1]){                                   // C - arc over the roof, north to south
+    const u=rC((t-K.C[0])/(K.C[1]-K.C[0]));
+    const ph=lerp(VC0.ph,VC1.ph,u), r=lerp(VC0.r,VC1.r,u);
+    return {beat:'C \u00b7 CREST',th:lerp(0,180,u),r,pos:vert(ph,r),
+      tgt:new V3(0,lerp(82,58,u),lerp(30,-2,u))};
+  }
+  if(t<K.D[1]){                                   // D - descending helix, south to prow
+    const u=rD((t-K.D[0])/(K.D[1]-K.D[0]));
+    const th=lerp(180,360,u), r=lerp(-C_END.z,52,u), y=lerp(C_END.y,32,u);
+    return {beat:'D \u00b7 HELIX ORBIT',th,r,pos:pol(th,r,y),
+      tgt:new V3(0,lerp(58,40,u),lerp(-2,4,u))};
+  }
+  const u=rE((t-K.E[0])/(K.E[1]-K.E[0]));         // E - drop to the street, prow again
+  const r=lerp(52,64,u), y=lerp(32,7,u);
+  return {beat:'E \u00b7 DIVE OUT',th:360,r,pos:pol(360,r,y),
+    tgt:new V3(0,lerp(40,30,u),lerp(4,30,u))};
+}
+
+const slate=document.getElementById('slate');
+const f1=n=>(n<0?'':'+')+n.toFixed(1);
+function draw(t){
+  poseTraffic(t);
+  const c=camPath(t);
+  camera.up.set(0,1,0);                 // level horizon, always. zero roll.
+  camera.position.copy(c.pos); camera.lookAt(c.tgt);
+  if(!BARE) slate.textContent=
+    `${t.toFixed(2)}s   ${c.beat}\n`+
+    `cam  ( ${f1(c.pos.x)} , ${f1(c.pos.y)} , ${f1(c.pos.z)} )   m\n`+
+    `look ( ${f1(c.tgt.x)} , ${f1(c.tgt.y)} , ${f1(c.tgt.z)} )   m\n`+
+    `azimuth ${c.th.toFixed(0)}°   radius ${c.r.toFixed(0)}m   alt ${c.pos.y.toFixed(0)}m   fov 60°`;
+  composer.render();
+}
+const clock=new THREE.Clock(); let t=0,paused=false;
+function frame(){requestAnimationFrame(frame);
+  if(!paused) t=(t+Math.min(clock.getDelta(),0.05))%TOTAL; draw(t);}
+requestAnimationFrame(frame);
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){paused=!paused;e.preventDefault();}
+  else if(e.code==='KeyR')t=0;
+  else if(e.code==='ArrowRight'){paused=true;t=(t+0.25)%TOTAL;draw(t);}
+  else if(e.code==='ArrowLeft'){paused=true;t=(t-0.25+TOTAL)%TOTAL;draw(t);}});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);
+  bloom.setSize(innerWidth,innerHeight);});
+if(BARE) slate.remove();
+
+window.__anim={
+  duration:TOTAL, beats:K,
+  seek(x){paused=true;t=clamp(x,0,TOTAL);draw(t);return{t,beat:camPath(t).beat};},
+  play(){paused=false;},
+  at(x){const c=camPath(clamp(x,0,TOTAL));return{x:c.pos.x,y:c.pos.y,z:c.pos.z,
+    tx:c.tgt.x,ty:c.tgt.y,tz:c.tgt.z,th:c.th,r:c.r,beat:c.beat};},
+  // dump the exact path for the coordinate / code / diagram experiments
+  sample(hz=2){const out=[];for(let i=0;i<=Math.round(TOTAL*hz);i++){
+    const x=i/hz,c=camPath(Math.min(x,TOTAL));
+    out.push({t:+x.toFixed(2),beat:c.beat,
+      x:+c.pos.x.toFixed(1),y:+c.pos.y.toFixed(1),z:+c.pos.z.toFixed(1),
+      tx:+c.tgt.x.toFixed(1),ty:+c.tgt.y.toFixed(1),tz:+c.tgt.z.toFixed(1),
+      az:+c.th.toFixed(0),r:+c.r.toFixed(0)});}
+    return out;}
+};
+</script></body></html>

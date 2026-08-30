@@ -1,0 +1,38 @@
+FLATIRON DRONE TAKE - EXACT CAMERA PATH
+World units are metres. Origin is the building's ground centre.
++Z is north (the direction the prow points). +X is east. +Y is up.
+Azimuth is measured from +Z toward +X. Radius is horizontal distance from the axis.
+Lens is fixed at 60 deg vertical FOV. Roll is zero throughout - the horizon is always level.
+
+   t      camera (x, y, z)          look-at (x, y, z)        azim   radius   beat
+  0.0s   ( 0.0, 4.0, 95.0 )   ( 0.0, 10.0, 30.0 )      0      95   A · PROW APPROACH
+  0.5s   ( 0.0, 4.4, 88.4 )   ( 0.0, 10.8, 30.0 )      0      88   A · PROW APPROACH
+  1.0s   ( 0.0, 5.3, 72.2 )   ( 0.0, 12.7, 30.0 )      0      72   A · PROW APPROACH
+  1.5s   ( 0.0, 6.3, 55.9 )   ( 0.0, 14.6, 30.0 )      0      56   A · PROW APPROACH
+  2.0s   ( 0.0, 7.0, 44.0 )   ( 0.0, 16.0, 30.0 )      0      44   B · PROW CLIMB
+  2.5s   ( 0.0, 19.8, 43.1 )   ( 0.0, 25.6, 30.0 )      0      43   B · PROW CLIMB
+  3.0s   ( 0.0, 37.6, 41.9 )   ( 0.0, 39.0, 30.0 )      0      42   B · PROW CLIMB
+  3.5s   ( 0.0, 55.6, 40.7 )   ( 0.0, 52.4, 30.0 )      0      41   B · PROW CLIMB
+  4.0s   ( 0.0, 73.5, 39.5 )   ( 0.0, 65.9, 30.0 )      0      39   B · PROW CLIMB
+  4.5s   ( 0.0, 91.4, 38.2 )   ( 0.0, 79.3, 30.0 )      0      38   B · PROW CLIMB
+  5.0s   ( 0.0, 105.5, 30.1 )   ( 0.0, 78.7, 25.7 )     24      49   C · CREST
+  5.5s   ( 0.0, 115.2, 16.6 )   ( 0.0, 74.7, 20.2 )     55      50   C · CREST
+  6.0s   ( 0.0, 120.0, 0.6 )   ( 0.0, 70.6, 14.8 )     86      50   C · CREST
+  6.5s   ( 0.0, 119.1,-16.3 )   ( 0.0, 66.5, 9.4 )    116      51   C · CREST
+  7.0s   ( 0.0, 112.7,-32.1 )   ( 0.0, 62.4, 3.9 )    147      51   C · CREST
+  7.5s   ( 0.0, 102.0,-44.4 )   ( 0.0, 58.6,-1.2 )    176      52   C · CREST
+  8.0s   (-9.5, 95.6,-45.4 )   ( 0.0, 56.8,-1.6 )    192      46   D · HELIX ORBIT
+  8.5s   (-23.7, 88.6,-40.6 )   ( 0.0, 55.0,-1.0 )    210      47   D · HELIX ORBIT
+  9.0s   (-35.9, 81.5,-31.3 )   ( 0.0, 53.1,-0.4 )    229      48   D · HELIX ORBIT
+  9.5s   (-44.6, 74.5,-18.4 )   ( 0.0, 51.2, 0.3 )    248      48   D · HELIX ORBIT
+ 10.0s   (-48.8, 67.4,-3.2 )   ( 0.0, 49.4, 0.9 )    266      49   D · HELIX ORBIT
+ 10.5s   (-47.8, 60.4, 12.7 )   ( 0.0, 47.5, 1.5 )    285      49   D · HELIX ORBIT
+ 11.0s   (-41.8, 53.3, 27.7 )   ( 0.0, 45.6, 2.1 )    304      50   D · HELIX ORBIT
+ 11.5s   (-31.1, 46.3, 40.1 )   ( 0.0, 43.8, 2.7 )    322      51   D · HELIX ORBIT
+ 12.0s   (-16.8, 39.2, 48.5 )   ( 0.0, 41.9, 3.4 )    341      51   D · HELIX ORBIT
+ 12.5s   (-2.6, 33.1, 51.8 )   ( 0.0, 40.3, 3.9 )    357      52   D · HELIX ORBIT
+ 13.0s   (-0.0, 27.1, 54.4 )   ( 0.0, 38.0, 9.1 )    360      54   E · DIVE OUT
+ 13.5s   (-0.0, 20.2, 57.7 )   ( 0.0, 35.3, 16.3 )    360      58   E · DIVE OUT
+ 14.0s   (-0.0, 13.3, 61.0 )   ( 0.0, 32.5, 23.4 )    360      61   E · DIVE OUT
+ 14.5s   (-0.0, 8.1, 63.5 )   ( 0.0, 30.5, 28.8 )    360      63   E · DIVE OUT
+ 15.0s   (-0.0, 7.0, 64.0 )   ( 0.0, 30.0, 30.0 )    360      64   E · DIVE OUT

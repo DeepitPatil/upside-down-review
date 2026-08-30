@@ -1,10 +1,42 @@
-FLATIRON DRONE TAKE - EXACT CAMERA PATH
-World units are metres. Origin is the building's ground centre.
-+Z is north (the direction the prow points). +X is east. +Y is up.
-Azimuth is measured from +Z toward +X. Radius is horizontal distance from the axis.
-Lens is fixed at 60 deg vertical FOV. Roll is zero throughout - the horizon is always level.
+PHOTOREAL AERIAL CINEMATOGRAPHY. One continuous 15-second drone shot of the
+Flatiron Building in Manhattan, New York. This is a SINGLE UNBROKEN TAKE: no cuts,
+no edits, no transitions, no jump in camera position at any moment. It is one
+physical drone flying one continuous path from the first frame to the last.
 
-   t      camera (x, y, z)          look-at (x, y, z)        azim  radius   section
+THE BUILDING. The Flatiron Building: 22 storeys, 87 metres tall, shaped like a
+triangular wedge. Its narrow rounded prow points north, where Fifth Avenue and
+Broadway split and run away on either side of it. Cream-buff limestone and
+terracotta facade, a horizontal cornice band at every floor, a dense regular grid
+of tall windows, a heavy projecting cornice at the roofline, a wooden water tower
+standing on the flat roof. It is the tallest building in its immediate
+neighbourhood; everything around it is shorter, 5 to 15 storeys, brick and stone.
+
+THE LIGHT. Golden hour, clear sky, sun low in the west-north-west. The long west
+facade is fully lit warm gold with the window grid catching the light. The east
+facade is in cool blue shadow. Long shadows lie across the streets. The lighting
+is identical in the first frame and the last frame; the sun does not move.
+
+THE LENS. Wide lens, about 20mm, and it never changes: no zoom, no focal length
+change at any point in the shot. The horizon stays level throughout. The camera
+never rolls, never tilts sideways, never goes dutch.
+
+THE STREET. Yellow taxis and traffic moving along both avenues, pedestrians on
+the sidewalks, the green trees of Madison Square Park off to the east.
+
+CAMERA MOTION, GIVEN AS COORDINATES.
+
+Coordinate system, in metres:
+    the origin (0, 0, 0) is on the ground at the centre of the building
+    +X is east        +Y is straight up        +Z is north
+    +Z is the direction the prow points.
+The building occupies X from -13 to +13, Z from -30 to +30, Y from 0 to 87.
+
+The table below gives, every half second, where the drone is (CAMERA) and the
+exact point in space it is aimed at (LOOK AT). Fly smoothly and continuously
+through every one of these positions in order, aiming at the given point at each
+moment. Do not stop, do not cut, do not skip ahead, do not jump.
+
+   TIME    CAMERA (x, y, z)          LOOK AT (x, y, z)        AZIM  RADIUS   SECTION
   0.0s   ( 0.0, 4.0, 95.0 )   ( 0.0, 10.0, 30.0 )      0      95   A · PROW APPROACH
   0.5s   ( 0.0, 4.4, 88.4 )   ( 0.0, 10.8, 30.0 )      0      88   A · PROW APPROACH
   1.0s   ( 0.0, 5.3, 72.2 )   ( 0.0, 12.7, 30.0 )      0      72   A · PROW APPROACH
@@ -36,3 +68,9 @@ Lens is fixed at 60 deg vertical FOV. Roll is zero throughout - the horizon is a
  14.0s   ( 0.0, 13.3, 61.0 )   ( 0.0, 32.5, 23.4 )    360      61   E · DIVE OUT
  14.5s   ( 0.0, 8.1, 63.5 )   ( 0.0, 30.5, 28.8 )    360      63   E · DIVE OUT
  15.0s   ( 0.0, 7.0, 64.0 )   ( 0.0, 30.0, 30.0 )    360      64   E · DIVE OUT
+
+Those coordinates are the complete description of the camera move.
+
+Photoreal, sharp, cinematic. No text, no titles, no captions, no watermarks, no
+graphic overlays of any kind. No slow motion, no speed ramping, no time lapse.
+The full 15 seconds is one continuous flight.

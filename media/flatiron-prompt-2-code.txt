@@ -1,0 +1,98 @@
+PHOTOREAL AERIAL CINEMATOGRAPHY. One continuous 15-second drone shot of the
+Flatiron Building in Manhattan, New York. This is a SINGLE UNBROKEN TAKE: no cuts,
+no edits, no transitions, no jump in camera position at any moment. It is one
+physical drone flying one continuous path from the first frame to the last.
+
+THE BUILDING. The Flatiron Building: 22 storeys, 87 metres tall, shaped like a
+triangular wedge. Its narrow rounded prow points north, where Fifth Avenue and
+Broadway split and run away on either side of it. Cream-buff limestone and
+terracotta facade, a horizontal cornice band at every floor, a dense regular grid
+of tall windows, a heavy projecting cornice at the roofline, a wooden water tower
+standing on the flat roof. It is the tallest building in its immediate
+neighbourhood; everything around it is shorter, 5 to 15 storeys, brick and stone.
+
+THE LIGHT. Golden hour, clear sky, sun low in the west-north-west. The long west
+facade is fully lit warm gold with the window grid catching the light. The east
+facade is in cool blue shadow. Long shadows lie across the streets. The lighting
+is identical in the first frame and the last frame; the sun does not move.
+
+THE LENS. Wide lens, about 20mm, and it never changes: no zoom, no focal length
+change at any point in the shot. The horizon stays level throughout. The camera
+never rolls, never tilts sideways, never goes dutch.
+
+THE STREET. Yellow taxis and traffic moving along both avenues, pedestrians on
+the sidewalks, the green trees of Madison Square Park off to the east.
+
+CAMERA MOTION, GIVEN AS CODE.
+
+The camera move is defined exactly by the function below. t is the time in
+seconds, from 0 to 15. It returns the drone's position and the point in space it
+is aimed at, both in metres, in a right-handed system where +X is east, +Y is up,
+and +Z is north (the direction the prow points). The origin is on the ground at
+the centre of the building, which occupies X -13..+13, Z -30..+30, Y 0..87.
+
+Execute this move exactly.
+
+const lerp = (a, b, u) => a + (b - a) * u;
+
+// ease(u, a, b): accelerate over the first `a` of the beat, hold a constant
+// speed through the middle, decelerate over the last `b`. The drone never
+// comes to a stop between beats - it carries its speed across every boundary.
+// Cruising speed is about 35 metres per second throughout.
+
+function camera(t) {
+
+  // BEAT A - 0.0 to 2.0s - fly in low and level from the north, straight at
+  // the prow, barely above the traffic
+  if (t < 2.0) {
+    const u = ease((t - 0.0) / 2.0, 0.30, 0.30);
+    return { pos:  [0, lerp( 4,  7, u), lerp(95, 44, u)],
+             look: [0, lerp(10, 16, u), 30] };
+  }
+
+  // BEAT B - 2.0 to 4.6s - climb the prow. Straight up the leading edge,
+  // hugging the facade, from street level to just above the roof.
+  if (t < 4.6) {
+    const u = ease((t - 2.0) / 2.6, 0.25, 0.10);
+    return { pos:  [0, lerp( 7, 95, u), lerp(44, 38, u)],
+             look: [0, lerp(16, 82, u), 30] };
+  }
+
+  // BEAT C - 4.6 to 7.6s - arc over the roof, north to south, in one
+  // continuous curve past the water tower. This is HALF the circuit around
+  // the building, taken over the top instead of around the side.
+  if (t < 7.6) {
+    const u   = ease((t - 4.6) / 3.0, 0.10, 0.12);
+    const phi = lerp(30.8, 144.5, u) * Math.PI / 180;   // angle over the top
+    const r   = lerp(48.9,  51.6, u);                   // metres from the pivot
+    return { pos:  [0, 70 + Math.sin(phi) * r, -4 + Math.cos(phi) * r],
+             look: [0, lerp(82, 58, u), lerp(30, -2, u)] };
+  }
+
+  // BEAT D - 7.6 to 12.6s - a descending helix. Swing 180 degrees around the
+  // WEST side of the building while falling from 100m to 32m and easing
+  // outward. Azimuth, altitude and radius all change together, driven by the
+  // same u - the drone is turning, dropping and widening simultaneously,
+  // never one after the other.
+  if (t < 12.6) {
+    const u  = ease((t - 7.6) / 5.0, 0.12, 0.14);
+    const az = lerp(180, 360, u) * Math.PI / 180;  // 180 = south, 270 = west, 360 = north
+    const r  = lerp( 46,  52, u);
+    const y  = lerp(100,  32, u);
+    return { pos:  [Math.sin(az) * r, y, Math.cos(az) * r],
+             look: [0, lerp(58, 40, u), lerp(-2, 4, u)] };
+  }
+
+  // BEAT E - 12.6 to 15.0s - drop to street level at the prow and settle,
+  // ending on the very same axis the shot started on. The last frame rhymes
+  // with the first.
+  const u = ease((t - 12.6) / 2.4, 0.14, 0.45);
+  return { pos:  [0, lerp(32,  7, u), lerp(52, 64, u)],
+           look: [0, lerp(40, 30, u), lerp( 4, 30, u)] };
+}
+
+That function is the complete description of the camera move.
+
+Photoreal, sharp, cinematic. No text, no titles, no captions, no watermarks, no
+graphic overlays of any kind. No slow motion, no speed ramping, no time lapse.
+The full 15 seconds is one continuous flight.

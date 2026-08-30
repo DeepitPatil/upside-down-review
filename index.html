@@ -9,7 +9,26 @@ video,img{width:100%;border-radius:8px;background:#000;display:block}
 .txt{display:inline-block;padding:9px 13px;background:#1b212b;border-radius:6px;color:#7fb0ff;
 text-decoration:none}.item{margin-bottom:20px}
 </style></head><body><h1>Upside Down — Seedance experiment</h1>
-<p>Served from GitHub Pages. Videos are faststart-remuxed and range-served.</p><section><h2>Flatiron drone &mdash; previz for the specification experiment</h2>
+<p>Served from GitHub Pages. Videos are faststart-remuxed and range-served.</p><section><h2>Flatiron &mdash; the three specifications</h2>
+<p>Same shot, described three ways. The scene block, lighting, lens and single-take rule are
+<em>identical</em> in all three &mdash; the only thing that varies is how the camera move is
+expressed. Nothing generated yet.</p>
+<div class=item><h3>1 &middot; coordinates</h3><p>929 words. A metric axis convention plus the drone's
+XYZ and look-at XYZ every half second, 31 rows. No prose describes the motion &mdash; the numbers
+carry it alone, or they don't.</p>
+<a class=txt href="media/flatiron-prompt-1-coordinates.txt">open prompt 1</a></div>
+<div class=item><h3>2 &middot; code</h3><p>886 words. The actual <code>camera(t)</code> function, five named
+beats. The helix is the real test: azimuth, altitude and radius all driven by the same
+<code>u</code>, which states simultaneity in a way prose can't.</p>
+<a class=txt href="media/flatiron-prompt-2-code.txt">open prompt 2</a></div>
+<div class=item><h3>3 &middot; diagrams (Seedance 2.0)</h3><p>591 words plus two images. Plan view and 3D view
+of the flight path, with six numbered beats keyed across both.</p>
+<a class=txt href="media/flatiron-prompt-3-diagrams.txt">open prompt 3</a></div>
+<div class=item><h3>flatiron-diagram-plan.png</h3><p>[Image1] &mdash; plan view, north up.</p>
+<a href="media/flatiron-diagram-plan.png"><img loading=lazy src="media/flatiron-diagram-plan.png"></a></div>
+<div class=item><h3>flatiron-diagram-3d.png</h3><p>[Image2] &mdash; 3D view from the north-west.</p>
+<a href="media/flatiron-diagram-3d.png"><img loading=lazy src="media/flatiron-diagram-3d.png"></a></div>
+</section><section><h2>Flatiron drone &mdash; previz for the specification experiment</h2>
 <p>One unbroken 15s take, no cuts. Everything below is chosen so the same shot can be
 re-specified three ways (coordinates / code / diagram) and the results compared against
 a single ground truth.</p>

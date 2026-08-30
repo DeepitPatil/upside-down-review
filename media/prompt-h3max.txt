@@ -1,0 +1,106 @@
+A 15-second cinematic street-race sequence, shot on 35mm anamorphic, cut from ten
+distinct camera setups. Photoreal live action. Night.
+
+=== WORLD ===
+A wide, empty four-lane city street at night in Tokyo, closed off for an illegal
+street race. Wet black asphalt with a broken white dashed line down the centre and
+a solid white start line painted across it. Low concrete kerbs both sides. Tall
+dark buildings press in on both sides, their faces covered in vertical neon signage
+in cyan, magenta, orange, green and red, the light bleeding down onto the wet road
+as long smeared reflections. Sodium street lamps on plain poles every twenty metres
+down both kerbs, each throwing a warm pool onto the tarmac. The street runs dead
+straight for about two hundred metres, then bends into a long ninety-degree
+left-hand sweeper. Cold blue-grey ambient, hot neon accents, deep black shadows.
+Haze in the air so the light beams and the distant neon read as depth.
+
+=== THE TWO CARS ===
+Car 1: a 1990s Japanese tuner coupe in gloss signal red. Wide-arch body kit, low
+stance, large black aftermarket alloy wheels with low-profile tyres, a big flat
+rear wing on two upright stays, quad round tail lights, rectangular projector
+headlights. Deeply tinted glass.
+Car 2: identical class of car in deep electric blue, same wide-arch kit, same big
+rear wing, same black alloys. The two cars are visually distinct only by colour and
+minor trim.
+They start side by side on the painted line, about nine metres apart, nose pointing
+straight down the street, engines idling with a faint heat shimmer at the exhausts.
+Car 1 is on the LEFT of frame, Car 2 is on the RIGHT, seen from behind.
+
+=== THE FLAG GIRL ===
+A young woman in a bright yellow bomber jacket, dark fitted trousers, dark boots
+and long dark hair. She carries a large magenta-pink flag on a slim metal pole,
+about a metre and a half long. She is the only person in the entire sequence.
+
+=== SHOT LIST — hard cut between every shot, no dissolves ===
+
+SHOT 1  0.0-2.0s  GRID. Camera on the tarmac between the two cars, one metre off
+the ground, dead centre, looking straight down the street. Both cars fill the left
+and right edges of frame in the foreground, their rear wings and wheels close to
+the lens; the empty street and the neon corridor run away to a vanishing point in
+the middle. Camera creeps slowly forward and settles lower. Wide lens.
+
+SHOT 2  2.0-3.6s  SHE WALKS IN. Cut to a low three-quarter angle from the right
+kerb. The woman walks in from the right side of frame into the middle of the road
+ahead of the cars, flag held low and trailing, and stops on the centre line. She
+turns to face the two cars. Camera drifts slowly left, following her in.
+
+SHOT 3  3.6-4.4s  FLAG UP. Cut to a low hero angle, camera almost on the road
+looking up at her against the neon skyline. She raises the magenta flag high above
+her head in both hands and holds it, the fabric snapping. Slow push in.
+
+SHOT 4  4.4-5.6s  TYRES. Cut to an extreme close-up of the red car's rear wheel,
+lens barely a metre from the tyre, at axle height. The wheel is still. At 4.4s
+exactly the flag slashes down out of frame and the wheel instantly spins up,
+spinning so fast the spokes blur, and thick white tyre smoke erupts and boils past
+the lens. The car body squats and begins to move away. Hard camera shake on the
+launch.
+
+SHOT 5  5.6-6.9s  LAUNCH PAST. Cut to a static camera on the tarmac at the right
+kerb, forty metres down the street, lens forty centimetres off the ground looking
+across the road. Both cars come out of the smoke and blast past the lens
+left-to-right at enormous speed, headlights flaring, the frame shaking as they pass.
+
+SHOT 6  6.9-8.6s  AERIAL. Cut to a high aerial, sixty metres up, looking down and
+ahead at both cars racing side by side down the straight between the two walls of
+neon buildings, their headlight beams sweeping the road ahead of them. The camera
+descends and swings forward, closing on them.
+
+SHOT 7  8.6-10.2s  SIDE TRACK. Cut to a tracking shot flying alongside the cars at
+window height, fifteen metres out to the side, perfectly matching their speed so
+the two cars hang steady in frame while the buildings, kerbs and street lamps strobe
+past behind them in a blur. The cars are dead level with each other, trading the
+lead.
+
+SHOT 8  10.2-12.6s  THE DRIFT. Cut to a low camera on the outside of the
+left-hand sweeper. Both cars enter the corner far too fast and break traction
+together, rear ends stepping out, bodies angled hard into the turn while they
+continue travelling forward, front wheels counter-steering. Enormous white tyre
+smoke pours off all four rear wheels and fills the frame. Orange sparks spray from
+the undertrays as they scrape. The cars slide side by side through the whole corner,
+inches apart. The camera rises and sweeps with them through the slide. This is the
+longest and most spectacular shot of the sequence.
+
+SHOT 9  12.6-13.9s  LOW CHASE. Cut to a low chase camera half a metre off the
+tarmac, eleven metres directly behind the cars, racing after them as they gather
+grip and power out of the corner, tail lights blazing red, smoke still hanging in
+the air behind them.
+
+SHOT 10  13.9-15.0s  GONE. Cut to a final shot from behind and above as the camera
+cranes upward and the two cars accelerate away down the neon street, shrinking
+toward the vanishing point. Hold as they disappear.
+
+=== GRADE AND STYLE ===
+Photoreal, cinematic, 35mm anamorphic with horizontal lens flares from the neon and
+headlights. Shallow depth of field on the close shots, deep focus on the aerial.
+Cool blue-teal shadows, hot magenta and cyan neon, warm sodium highlights, rich
+blacks. Fine 35mm film grain. Motion blur on everything that moves fast. Wet road
+reflections throughout. Fast, aggressive, kinetic editing.
+
+=== HARD CONSTRAINTS ===
+Exactly two cars, never more, never fewer. Exactly one person, the woman with the
+flag, and she appears only in shots 2, 3 and 4. No crowd, no spectators, no other
+pedestrians, no traffic, no parked cars, no police. The red car is always red and
+the blue car is always blue; they never change colour or swap sides at a cut. Cars
+never crash, never roll, never leave the road. The road surface stays continuous
+tarmac. No on-screen text, no titles, no subtitles, no watermarks, no HUD, no
+speedometer overlays. No slow motion and no speed ramps. Every transition is a hard
+cut on the timings given above.

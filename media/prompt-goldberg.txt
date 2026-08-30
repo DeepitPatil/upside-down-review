@@ -1,0 +1,94 @@
+A 15-second Rube Goldberg chain reaction filmed as ONE SINGLE UNBROKEN
+CONTINUOUS TAKE. Photoreal live action, macro tabletop cinematography.
+
+=== THE ONE RULE ===
+There is exactly one shot. The camera never cuts, never jumps, never dissolves,
+and never resets. It runs continuously from the first frame to the last, gliding
+smoothly left to right along the machine on a motion-control dolly, always
+keeping the currently-firing part of the machine centred in frame. If you are
+tempted to cut, do not — move the camera instead.
+
+=== SETTING ===
+A long dark workbench in a dim workshop, photographed at tabletop height. Matte
+charcoal bench surface, a plain dark grey back wall a few metres behind it, deep
+shadow beyond. Warm practical light from above and slightly behind camera, cool
+blue fill from the left, so every object is crisply modelled with a soft warm
+key and a cold rim. Shallow depth of field: the firing part is sharp, the rest
+of the bench falls gently out of focus. Fine dust drifting in the light beams.
+
+=== THE MACHINE, LEFT TO RIGHT ===
+Everything sits in one straight line along the bench so a single dolly move can
+follow the whole chain.
+1. A pale grey wooden chute with metal side rails, descending in a shallow
+   S-curve from high on the left down to bench level.
+2. A bright orange wooden seesaw plank balanced on a small metal fulcrum, with a
+   raised lip at each end.
+3. A line of fourteen white rectangular dominoes standing upright, evenly spaced,
+   running left to right along the bench.
+4. A slim metal release lever, and behind it a tall dark post carrying a blue
+   polished steel pendulum ball on a thin cable.
+5. A green metal bucket and a purple metal counterweight hanging from opposite
+   ends of one rope over a pulley wheel at the top of a mast.
+6. A pale grey chute hinged at its left end, currently level, with a yellow
+   ball resting in it.
+7. A cyan bladed turbine wheel on a stand, free to spin.
+8. A closed dark box with a folded magenta flag on a pole inside it.
+
+=== THE CHAIN, IN STRICT ORDER ===
+Each event is caused by the one before it. Nothing moves before the thing that
+triggers it has arrived. Nothing moves late.
+
+0.0s   A polished red marble is released at the top of the chute and rolls down,
+       accelerating, following the S-curve, rattling between the rails.
+2.3s   The marble drops onto the raised left end of the orange seesaw. The seesaw
+       tips under its weight and the marble rolls down the plank.
+3.4s   The marble runs off the low end of the seesaw onto the bench.
+4.0s   The marble strikes the first white domino and knocks it over.
+4.0-6.0s The dominoes fall one after another in a clean travelling wave down the
+       line, each knocking the next, the wave moving left to right.
+6.2s   The final domino falls onto the metal release lever and pushes it down.
+6.4s   The lever releases the blue pendulum ball, which swings down and across in
+       a long arc.
+7.8s   The pendulum ball strikes the green bucket.
+7.9-9.6s The struck bucket falls, and because it is roped over the pulley, the
+       purple counterweight rises on the other side at the same rate.
+9.6s   The risen counterweight knocks the hinged chute, which tips downward.
+10.4s  The yellow ball rolls out of the tipped chute and runs down it, gathering
+       speed.
+11.9s  The yellow ball slams into the cyan turbine, which spins up fast, blades
+       blurring.
+13.4s  The spinning turbine drives the box open and a magenta flag rises
+       smoothly out of it on its pole and unfurls.
+15.0s  The flag stands fully raised. End of shot.
+
+=== CAMERA ===
+One continuous motion-control move, left to right, travelling roughly forty
+metres of bench over fifteen seconds. It starts close and low on the red marble
+at the top of the chute, then tracks right, staying with whatever is currently
+firing. It rises slightly and pulls back a little to take in the full line of
+dominoes as the wave travels, comes back down and closer for the pendulum swing,
+cranes up as the bucket falls and the counterweight rises, then descends and
+pushes in for the turbine, and finishes with a slow push in on the rising flag.
+The move is smooth and unhurried throughout, never whip-panning, never stopping
+dead. Slight parallax as it travels, so the bench and back wall shift against
+each other.
+
+=== STYLE ===
+Photoreal, macro tabletop cinematography, shot on 50mm with shallow depth of
+field. Crisp materials: polished glass marble, painted wood, brushed metal,
+matte plastic. Realistic contact shadows on the bench. Physically believable
+weight and momentum in every collision. Warm key, cool fill, rich blacks, fine
+film grain. No stylisation, no cartoon look.
+
+=== HARD CONSTRAINTS ===
+ONE CONTINUOUS SHOT. No cuts, no dissolves, no jump cuts, no camera resets, no
+speed ramps, no slow motion, no reverse motion.
+The red marble is the same single red marble throughout stages 1 to 4 — it never
+changes colour, size or shape, and there is never more than one red marble.
+Events happen strictly in the order and at the times given. No domino falls
+before the marble reaches it. The pendulum does not swing before the lever is
+tripped. The bucket does not fall before the pendulum strikes it. The flag does
+not appear before the turbine spins.
+Exactly fourteen dominoes. No hands, no people, no animals anywhere in frame.
+No on-screen text, no titles, no captions, no watermarks, no arrows or diagrams.
+Nothing explodes, nothing catches fire, nothing shatters.
